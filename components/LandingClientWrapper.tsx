@@ -2,18 +2,22 @@
 
 import React, { useState } from 'react';
 import ThreeBooksSection, { ProductItem } from './ThreeBooksSection';
+import WhyGoPustak from './WhyGoPustak';
 import SamplePagesGallery from './SamplePagesGallery';
+import WhyTheseBooks from './WhyTheseBooks';
+import TelegramBanner from './TelegramBanner';
+import FAQSection from './FAQSection';
 import CheckoutModal from './CheckoutModal';
 import SampleModal from './SampleModal';
 
 interface LandingClientWrapperProps {
   products: ProductItem[];
-  children?: React.ReactNode;
+  heroChild: React.ReactNode;
 }
 
 export default function LandingClientWrapper({
   products,
-  children,
+  heroChild,
 }: LandingClientWrapperProps) {
   const [selectedBuyProduct, setSelectedBuyProduct] = useState<ProductItem | null>(null);
   const [selectedSampleProduct, setSelectedSampleProduct] = useState<ProductItem | null>(null);
@@ -32,27 +36,33 @@ export default function LandingClientWrapper({
 
   return (
     <>
-      {/* 1. Hero & Top sections */}
-      {Array.isArray(children) ? children[0] : children}
+      {/* 1. Hero Section */}
+      {heroChild}
 
-      {/* 2. Three Books Section */}
+      {/* 2. Exactly 3 Ebooks Grid */}
       <ThreeBooksSection
         products={products}
         onBuyNow={handleBuyNow}
         onViewSample={handleViewSample}
       />
 
-      {/* 3. Framework & Why GoPustak */}
-      {Array.isArray(children) && children.slice(2, 4)}
+      {/* 3. Why GoPustak: 4 Pillars */}
+      <WhyGoPustak />
 
-      {/* 4. Sample Pages Gallery */}
+      {/* 4. Real PDF Sample Pages Gallery */}
       <SamplePagesGallery
         products={products}
         onViewSample={handleViewSample}
       />
 
-      {/* 5. Remaining sections (WhyTheseBooks, FAQ) */}
-      {Array.isArray(children) && children.slice(4)}
+      {/* 5. Why These 3 Books: Direct Breakdown */}
+      <WhyTheseBooks />
+
+      {/* 6. Telegram Community Connect Banner */}
+      <TelegramBanner />
+
+      {/* 7. Frequently Asked Questions */}
+      <FAQSection />
 
       {/* Interactive Checkout Modal */}
       <CheckoutModal

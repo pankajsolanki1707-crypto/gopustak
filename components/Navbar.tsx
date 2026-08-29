@@ -58,18 +58,18 @@ export default function Navbar() {
             </Link>
 
             {/* Desktop Navigation Links */}
-            <nav className="hidden lg:flex items-center space-x-7 text-[13.5px] font-medium text-slate-300">
+            <nav className="hidden lg:flex items-center space-x-8 text-[13.5px] font-medium text-slate-300">
               <a href="/#three-books" className="hover:text-amber-400 transition-colors py-1">
                 The 3 Ebooks
-              </a>
-              <a href="/#plan-to-practice" className="hover:text-amber-400 transition-colors py-1">
-                Prep Framework
               </a>
               <a href="/#why-gopustak" className="hover:text-amber-400 transition-colors py-1">
                 Why GoPustak
               </a>
               <a href="/#sample-pages" className="hover:text-amber-400 transition-colors py-1">
                 Sample Pages
+              </a>
+              <a href="/#why-these-books" className="hover:text-amber-400 transition-colors py-1">
+                Why These 3 Books
               </a>
               <a href="/#faq" className="hover:text-amber-400 transition-colors py-1">
                 FAQ
@@ -130,14 +130,6 @@ export default function Navbar() {
               >
                 <span>The 3 Ebooks</span>
                 <span className="text-[10px] bg-amber-500/20 text-amber-400 px-2.5 py-0.5 rounded-full font-bold">3 TITLES</span>
-              </a>
-
-              <a
-                href="/#plan-to-practice"
-                onClick={closeMenu}
-                className="px-3.5 py-2.5 rounded-xl hover:bg-slate-800/80 text-slate-200 hover:text-amber-400 transition-colors"
-              >
-                Preparation Framework (Plan → Master → Practice)
               </a>
 
               <a
