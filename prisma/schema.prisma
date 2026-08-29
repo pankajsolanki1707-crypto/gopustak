@@ -1,0 +1,61 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model Product {
+  id                 String   @id @default(uuid())
+  slug               String   @unique
+  title              String
+  subtitle           String?
+  shortDescription   String
+  shortDescriptionEn String?
+  longDescription    String
+  coverImage         String
+  pdfFileName        String
+  language           String
+  format             String   @default("PDF")
+  pageCount          String?
+  edition            String
+  publicationDate   String?
+  priceInPaise       Int
+  mrpInPaise         Int
+  category           String   @default("UPSC EPFO / APFC")
+  displayOrder       Int      @default(0)
+  published          Boolean  @default(true)
+  highlights         String   // JSON string of array
+  samplePages        String   // JSON string of array of image URLs
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+model Order {
+  id                String   @id @default(uuid())
+  orderRef          String   @unique
+  productId         String
+  productTitle      String
+  customerName      String
+  customerEmail     String
+  customerPhone     String?
+  amountInPaise     Int
+  currency          String   @default("INR")
+  razorpayOrderId   String   @unique
+  razorpayPaymentId String?
+  razorpaySignature String?
+  status            String   @default("PENDING") // PENDING, PAID, FAILED
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model DownloadToken {
+  id            String   @id @default(uuid())
+  token         String   @unique
+  orderId       String
+  expiresAt     DateTime
+  downloadCount Int      @default(0)
+  createdAt     DateTime @default(now())
+}
