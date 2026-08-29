@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { verifyRazorpaySignature } from '@/lib/razorpay';
-import { generateDownloadToken } from '@/lib/secure-token';
+import { processOrderFulfillment } from '@/lib/fulfillment';
 
 export async function POST(req: Request) {
   try {
@@ -16,7 +16,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: 'Missing payment verification parameters' }, { status: 400 });
     }
 
-    // 1. Verify HMAC SHA256 Signature directly using Razorpay secret
+    // 1. Verify Razorpay HMAC-SHA256 Signature
     const isValidSignature = verifyRazorpaySignature({
       orderId: razorpayOrderId,
       paymentId: razorpayPaymentId,
@@ -24,68 +24,46 @@ export async function POST(req: Request) {
     });
 
     if (!isValidSignature) {
+      // Record failure if order exists
+      try {
+        await prisma.order.updateMany({
+          where: {
+            OR: [
+              { id: orderId },
+              { razorpayOrderId: razorpayOrderId },
+            ],
+          },
+          data: { status: 'FAILED' },
+        });
+      } catch (e) {
+        // Non-blocking
+      }
       return NextResponse.json({ success: false, error: 'Invalid payment signature' }, { status: 400 });
     }
 
-    // 2. Try updating order in DB (if DB writable)
-    let orderRef = `GP-${Date.now()}`;
-    let productTitle = 'UPSC EPFO/APFC Ebook';
-    let amountInPaise = 9900;
+    // 2. Execute Complete Order Fulfillment
+    const fulfillment = await processOrderFulfillment({
+      orderRefOrId: orderId,
+      razorpayOrderId,
+      razorpayPaymentId,
+      razorpaySignature,
+      eventSource: 'VERIFY_API',
+    });
 
-    try {
-      const order = await prisma.order.findFirst({
-        where: {
-          OR: [
-            { id: orderId },
-            { razorpayOrderId: razorpayOrderId },
-            { orderRef: orderId },
-          ],
-        },
-      });
-
-      if (order) {
-        orderRef = order.orderRef;
-        productTitle = order.productTitle;
-        amountInPaise = order.amountInPaise;
-
-        await prisma.order.update({
-          where: { id: order.id },
-          data: {
-            status: 'PAID',
-            razorpayPaymentId,
-            razorpaySignature,
-          },
-        });
-      }
-    } catch (dbErr) {
-      console.warn('[Verify DB Warning] DB operation skipped:', dbErr);
-    }
-
-    // 3. Generate secure signed 24h download authorization token
-    const tokenIdentifier = orderId || razorpayOrderId;
-    const { token, expiresAt } = generateDownloadToken(tokenIdentifier, 24);
-
-    try {
-      await prisma.downloadToken.create({
-        data: {
-          token,
-          orderId: tokenIdentifier,
-          expiresAt,
-        },
-      });
-    } catch (tokenDbErr) {
-      console.warn('[Token DB Warning] Token stored in HMAC signature:', tokenDbErr);
+    if (!fulfillment.success) {
+      return NextResponse.json({ success: false, error: fulfillment.error || 'Fulfillment error' }, { status: 404 });
     }
 
     return NextResponse.json({
       success: true,
-      orderRef,
-      token,
-      productTitle,
-      amountInPaise,
+      orderRef: fulfillment.orderRef,
+      token: fulfillment.token,
+      downloadUrl: fulfillment.downloadUrl,
+      productTitle: fulfillment.productTitle,
+      amountInPaise: fulfillment.amountInPaise,
     });
   } catch (error: any) {
-    console.error('Verify Payment Error:', error);
+    console.error('Verify Payment API Error:', error);
     return NextResponse.json({ success: false, error: error.message || 'Verification failed' }, { status: 500 });
   }
 }

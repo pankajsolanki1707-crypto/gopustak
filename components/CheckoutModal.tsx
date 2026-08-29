@@ -118,7 +118,8 @@ export default function CheckoutModal({ product, isOpen, onClose }: CheckoutModa
             const verifyData = await verifyRes.json();
             if (verifyData.success) {
               onClose();
-              router.push(`/thank-you?orderId=${order.id}&token=${verifyData.token}`);
+              const targetRef = verifyData.orderRef || order.orderRef;
+              router.push(`/order/success/${targetRef}?token=${verifyData.token}`);
             } else {
               setErrorMsg(verifyData.error || 'Payment signature verification failed.');
               setIsLoading(false);

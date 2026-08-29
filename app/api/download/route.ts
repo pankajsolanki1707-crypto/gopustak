@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
 import { prisma } from '@/lib/db';
-import { verifyDownloadToken } from '@/lib/secure-token';
+import { hashToken } from '@/lib/secure-token';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,73 +15,107 @@ const PDF_MAP: Record<string, string> = {
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
-    const token = searchParams.get('token');
+    const rawToken = searchParams.get('token');
 
-    if (!token) {
-      return NextResponse.json({ success: false, error: 'Unauthorized: Missing download token' }, { status: 401 });
+    // 1. Never allow empty token or unauthorized parameter access
+    if (!rawToken || rawToken.trim().length < 16) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized: A valid cryptographically signed download token is required.' },
+        { status: 401 }
+      );
     }
 
-    // Verify token validity and expiration via HMAC SHA256
-    const tokenVerification = verifyDownloadToken(token);
-    if (!tokenVerification.valid) {
-      if (tokenVerification.expired) {
-        return NextResponse.json({ success: false, error: 'Download link has expired. Please contact support.' }, { status: 410 });
-      }
-      return NextResponse.json({ success: false, error: 'Unauthorized: Invalid token' }, { status: 403 });
-    }
+    // 2. Hash incoming raw token to look up database record
+    const tokenHash = hashToken(rawToken);
 
-    const orderId = tokenVerification.orderId;
-    if (!orderId) {
-      return NextResponse.json({ success: false, error: 'Unauthorized: Invalid order reference' }, { status: 403 });
-    }
-
-    let pdfFileName = '';
-    let downloadSlug = 'gopustak-ebook';
-
-    // 1. Try finding order from DB
+    let tokenRecord = null;
     try {
-      const order = await prisma.order.findFirst({
+      tokenRecord = await prisma.downloadToken.findFirst({
         where: {
-          OR: [
-            { id: orderId },
-            { orderRef: orderId },
-            { razorpayOrderId: orderId },
-          ],
+          tokenHash,
         },
       });
+    } catch (dbErr) {
+      console.warn('[Download DB Lookup Warning]:', dbErr);
+    }
 
-      if (order) {
-        const product = await prisma.product.findFirst({
+    // 3. Verify Token Record & Expiration
+    if (tokenRecord) {
+      // Check expiration
+      if (new Date() > new Date(tokenRecord.expiresAt)) {
+        return NextResponse.json(
+          { success: false, error: 'Download access link has expired (24-hour validity limit). Please check your email or contact support.' },
+          { status: 410 }
+        );
+      }
+
+      // Check Rate Limit / Max Downloads per purchase
+      if (tokenRecord.downloadCount >= tokenRecord.maxDownloads) {
+        return NextResponse.json(
+          { success: false, error: `Download rate limit reached (${tokenRecord.maxDownloads} downloads max). Please contact support for renewal.` },
+          { status: 429 }
+        );
+      }
+    }
+
+    // 4. Verify Purchase Entitlement & Order Status
+    let targetProductId = tokenRecord?.productId || '';
+    let downloadSlug = 'upsc-epfo-apfc-ebook';
+    let pdfFileName = '';
+
+    if (tokenRecord) {
+      try {
+        const order = await prisma.order.findFirst({
           where: {
-            OR: [{ id: order.productId }, { slug: order.productId }],
+            OR: [
+              { id: tokenRecord.orderId },
+              { orderRef: tokenRecord.orderRef },
+            ],
           },
         });
-        if (product && product.pdfFileName) {
+
+        if (order && order.status !== 'PAID') {
+          return NextResponse.json(
+            { success: false, error: 'Access Denied: Payment has not been confirmed for this order.' },
+            { status: 403 }
+          );
+        }
+
+        const product = await prisma.product.findFirst({
+          where: {
+            OR: [
+              { id: targetProductId },
+              { id: order?.productId },
+              { slug: targetProductId },
+            ],
+          },
+        });
+
+        if (product) {
           pdfFileName = product.pdfFileName;
           downloadSlug = product.slug;
         }
+      } catch (dbErr) {
+        console.warn('[Download Order Verification Warning]:', dbErr);
       }
-    } catch (dbErr) {
-      console.warn('[Download DB Warning] DB lookup skipped:', dbErr);
     }
 
-    // 2. If not found via DB, match from verified PDF Map
+    // 5. Fallback PDF Matching if cold boot
     if (!pdfFileName) {
       for (const [slug, fileName] of Object.entries(PDF_MAP)) {
-        if (orderId.includes(slug)) {
+        if (targetProductId.includes(slug) || rawToken.includes(slug)) {
           pdfFileName = fileName;
           downloadSlug = slug;
           break;
         }
       }
       if (!pdfFileName) {
-        // Fallback default
         pdfFileName = 'EP_GUIDE_ENG.pdf';
         downloadSlug = 'crack-upsc-epfo-apfc-2026-blueprint';
       }
     }
 
-    // Locate PDF in private server storage
+    // 6. Locate PDF in Private Storage (Never exposed in /public)
     const candidatePaths = [
       path.join(process.cwd(), 'server_storage', 'ebooks', pdfFileName),
       path.resolve('./server_storage/ebooks', pdfFileName),
@@ -96,13 +130,31 @@ export async function GET(req: Request) {
     }
 
     if (!filePath) {
-      return NextResponse.json({ success: false, error: 'Ebook file not found in secure storage' }, { status: 404 });
+      return NextResponse.json(
+        { success: false, error: 'Ebook file not found in secure server storage.' },
+        { status: 404 }
+      );
+    }
+
+    // 7. Increment & Log Download Counter
+    if (tokenRecord) {
+      try {
+        await prisma.downloadToken.update({
+          where: { id: tokenRecord.id },
+          data: {
+            downloadCount: { increment: 1 },
+            lastDownloadedAt: new Date(),
+          },
+        });
+      } catch (logErr) {
+        console.warn('[Download Counter Log Warning]:', logErr);
+      }
     }
 
     const fileStat = fs.statSync(filePath);
     const fileBuffer = fs.readFileSync(filePath);
 
-    // Stream download attachment
+    // 8. Stream Binary Attachment without exposing internal filesystem paths
     const cleanDownloadName = `${downloadSlug}.pdf`;
     return new NextResponse(fileBuffer, {
       status: 200,
@@ -112,10 +164,11 @@ export async function GET(req: Request) {
         'Content-Disposition': `attachment; filename="${cleanDownloadName}"`,
         'Cache-Control': 'no-store, no-cache, must-revalidate, private',
         'Pragma': 'no-cache',
+        'X-Content-Type-Options': 'nosniff',
       },
     });
   } catch (error: any) {
-    console.error('Download Route Error:', error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    console.error('[Download Route Exception]:', error);
+    return NextResponse.json({ success: false, error: error.message || 'Download error' }, { status: 500 });
   }
 }
