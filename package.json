@@ -12,17 +12,13 @@
   },
   "dependencies": {
     "@prisma/client": "^5.16.1",
-    "canvas": "^2.11.2",
     "clsx": "^2.1.1",
     "framer-motion": "^11.2.10",
     "lucide-react": "^0.395.0",
     "next": "14.2.5",
-    "pdf-img-convert": "^1.2.1",
-    "pdfjs-dist": "^3.11.174",
     "razorpay": "^2.9.4",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "sharp": "^0.33.4",
     "tailwind-merge": "^2.3.0"
   },
   "devDependencies": {
