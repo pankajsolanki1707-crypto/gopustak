@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, ShieldCheck, ShoppingBag, Loader2, CheckCircle2, Lock } from 'lucide-react';
+import { X, ShieldCheck, ShoppingBag, Loader2, Lock, CheckCircle2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { ProductItem } from './ThreeBooksSection';
 
@@ -16,6 +16,28 @@ declare global {
     Razorpay: any;
   }
 }
+
+// Dynamically load Razorpay standard checkout script if not already present
+const loadRazorpayScript = (): Promise<boolean> => {
+  return new Promise((resolve) => {
+    if (typeof window !== 'undefined' && window.Razorpay) {
+      resolve(true);
+      return;
+    }
+    const existingScript = document.querySelector('script[src="https://checkout.razorpay.com/v1/checkout.js"]');
+    if (existingScript) {
+      existingScript.addEventListener('load', () => resolve(true));
+      existingScript.addEventListener('error', () => resolve(false));
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.async = true;
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+};
 
 export default function CheckoutModal({ product, isOpen, onClose }: CheckoutModalProps) {
   const router = useRouter();
@@ -37,7 +59,7 @@ export default function CheckoutModal({ product, isOpen, onClose }: CheckoutModa
     setIsLoading(true);
 
     try {
-      // 1. Create order on server (retrieving DB price)
+      // 1. Create authenticated order on backend
       const res = await fetch('/api/razorpay/create-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -50,87 +72,76 @@ export default function CheckoutModal({ product, isOpen, onClose }: CheckoutModa
       });
 
       const data = await res.json();
-      if (!data.success) {
-        throw new Error(data.error || 'Failed to initialize order');
+      if (!data.success || !data.order) {
+        throw new Error(data.error || 'Failed to initialize payment order');
       }
 
       const { order } = data;
 
-      // 2. Open Razorpay Checkout modal or simulation
-      if (order.isDemo || !window.Razorpay) {
-        // Fallback simulation mode for test environments
-        const mockPaymentId = `pay_sim_${Date.now()}`;
-        const mockSig = `demo_sig_${Date.now()}`;
-
-        const verifyRes = await fetch('/api/razorpay/verify-payment', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            orderId: order.id,
-            razorpayOrderId: order.razorpayOrderId,
-            razorpayPaymentId: mockPaymentId,
-            razorpaySignature: mockSig,
-          }),
-        });
-
-        const verifyData = await verifyRes.json();
-        if (!verifyData.success) {
-          throw new Error(verifyData.error || 'Payment verification failed');
-        }
-
-        onClose();
-        router.push(`/thank-you?orderId=${order.id}&token=${verifyData.token}`);
-      } else {
-        const options = {
-          key: order.keyId,
-          amount: order.amountInPaise,
-          currency: order.currency,
-          name: 'GOPUSTAK.IN',
-          description: product.title,
-          image: '/covers/cover-product-2.png',
-          order_id: order.razorpayOrderId,
-          prefill: {
-            name: customerName,
-            email: customerEmail,
-            contact: customerPhone,
-          },
-          theme: {
-            color: '#D97706',
-          },
-          handler: async function (response: any) {
-            try {
-              const verifyRes = await fetch('/api/razorpay/verify-payment', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  orderId: order.id,
-                  razorpayOrderId: response.razorpay_order_id,
-                  razorpayPaymentId: response.razorpay_payment_id,
-                  razorpaySignature: response.razorpay_signature,
-                }),
-              });
-
-              const verifyData = await verifyRes.json();
-              if (verifyData.success) {
-                onClose();
-                router.push(`/thank-you?orderId=${order.id}&token=${verifyData.token}`);
-              } else {
-                setErrorMsg(verifyData.error || 'Payment verification failed.');
-              }
-            } catch (err: any) {
-              setErrorMsg(err.message || 'Payment verification network error');
-            }
-          },
-          modal: {
-            ondismiss: function () {
-              setIsLoading(false);
-            },
-          },
-        };
-
-        const rzp = new window.Razorpay(options);
-        rzp.open();
+      // 2. Ensure Razorpay client script is loaded
+      const isScriptLoaded = await loadRazorpayScript();
+      if (!isScriptLoaded || typeof window.Razorpay === 'undefined') {
+        throw new Error('Unable to connect to Razorpay payment gateway. Please check your network connection.');
       }
+
+      // 3. Open Official Live Razorpay Checkout Screen
+      const options = {
+        key: order.keyId || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_live_SE3ZS0Lx0QfzHY',
+        amount: order.amountInPaise,
+        currency: order.currency || 'INR',
+        name: 'GOPUSTAK.IN',
+        description: product.title,
+        image: '/images/logo.png',
+        order_id: order.razorpayOrderId,
+        prefill: {
+          name: customerName,
+          email: customerEmail,
+          contact: customerPhone || '',
+        },
+        theme: {
+          color: '#0F172A',
+        },
+        handler: async function (response: any) {
+          try {
+            setIsLoading(true);
+            const verifyRes = await fetch('/api/razorpay/verify-payment', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                orderId: order.id,
+                razorpayOrderId: response.razorpay_order_id,
+                razorpayPaymentId: response.razorpay_payment_id,
+                razorpaySignature: response.razorpay_signature,
+              }),
+            });
+
+            const verifyData = await verifyRes.json();
+            if (verifyData.success) {
+              onClose();
+              router.push(`/thank-you?orderId=${order.id}&token=${verifyData.token}`);
+            } else {
+              setErrorMsg(verifyData.error || 'Payment signature verification failed.');
+              setIsLoading(false);
+            }
+          } catch (err: any) {
+            setErrorMsg(err.message || 'Network error during payment verification.');
+            setIsLoading(false);
+          }
+        },
+        modal: {
+          ondismiss: function () {
+            setIsLoading(false);
+          },
+        },
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.on('payment.failed', function (response: any) {
+        setErrorMsg(`Payment failed: ${response.error?.description || 'Transaction declined'}`);
+        setIsLoading(false);
+      });
+      rzp.open();
+
     } catch (err: any) {
       setErrorMsg(err.message || 'An error occurred during checkout.');
       setIsLoading(false);
@@ -168,14 +179,19 @@ export default function CheckoutModal({ product, isOpen, onClose }: CheckoutModa
             className="w-16 h-22 object-cover rounded shadow-md border border-slate-300 shrink-0"
           />
           <div className="flex-1 min-w-0">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700 bg-amber-100 px-2 py-0.5 rounded">
-              {product.category}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700 bg-amber-100 px-2 py-0.5 rounded">
+                {product.category}
+              </span>
+              <span className="text-[10px] font-bold text-amber-900 bg-amber-200/90 px-2 py-0.5 rounded uppercase">
+                Welcome Offer
+              </span>
+            </div>
             <h4 className="text-sm font-bold text-slate-900 line-clamp-1 mt-1">
               {product.title}
             </h4>
             <div className="flex items-baseline gap-2 mt-1">
-              <span className="text-lg font-extrabold text-slate-900">₹{priceInRs}</span>
+              <span className="text-xl font-black text-slate-900">₹{priceInRs}</span>
               {mrpInRs > priceInRs && (
                 <span className="text-xs text-slate-400 line-through">₹{mrpInRs}</span>
               )}
@@ -249,7 +265,7 @@ export default function CheckoutModal({ product, isOpen, onClose }: CheckoutModa
               {isLoading ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Securing Order & Gateway...
+                  Connecting to Razorpay...
                 </>
               ) : (
                 <>
@@ -262,7 +278,7 @@ export default function CheckoutModal({ product, isOpen, onClose }: CheckoutModa
 
           <div className="flex items-center justify-center gap-2 text-[11px] text-slate-500 pt-2">
             <ShieldCheck className="w-4 h-4 text-emerald-600" />
-            <span>256-Bit SSL Encrypted • Powered by Razorpay</span>
+            <span>256-Bit SSL Encrypted • Official Razorpay Live Gateway</span>
           </div>
         </form>
 
