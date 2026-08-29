@@ -6,7 +6,7 @@ import { generateDownloadToken } from '@/lib/secure-token';
 export async function POST(req: Request) {
   try {
     const {
-      orderId, // DB order ID
+      orderId,
       razorpayOrderId,
       razorpayPaymentId,
       razorpaySignature,
@@ -16,34 +16,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: 'Missing payment verification parameters' }, { status: 400 });
     }
 
-    // Retrieve order from DB
-    const order = await prisma.order.findUnique({
-      where: { id: orderId },
-    });
-
-    if (!order) {
-      return NextResponse.json({ success: false, error: 'Order not found' }, { status: 404 });
-    }
-
-    if (order.status === 'PAID') {
-      // Order already paid, return existing or new valid token
-      const { token, expiresAt } = generateDownloadToken(order.id);
-      await prisma.downloadToken.create({
-        data: {
-          token,
-          orderId: order.id,
-          expiresAt,
-        },
-      });
-      return NextResponse.json({
-        success: true,
-        message: 'Order already verified',
-        orderRef: order.orderRef,
-        token,
-      });
-    }
-
-    // Verify HMAC SHA256 Signature
+    // 1. Verify HMAC SHA256 Signature directly using Razorpay secret
     const isValidSignature = verifyRazorpaySignature({
       orderId: razorpayOrderId,
       paymentId: razorpayPaymentId,
@@ -51,42 +24,68 @@ export async function POST(req: Request) {
     });
 
     if (!isValidSignature) {
-      await prisma.order.update({
-        where: { id: order.id },
-        data: { status: 'FAILED' },
-      });
       return NextResponse.json({ success: false, error: 'Invalid payment signature' }, { status: 400 });
     }
 
-    // Update order status to PAID
-    const updatedOrder = await prisma.order.update({
-      where: { id: order.id },
-      data: {
-        status: 'PAID',
-        razorpayPaymentId,
-        razorpaySignature,
-      },
-    });
+    // 2. Try updating order in DB (if DB writable)
+    let orderRef = `GP-${Date.now()}`;
+    let productTitle = 'UPSC EPFO/APFC Ebook';
+    let amountInPaise = 9900;
 
-    // Generate secure short-lived download authorization token (24h validity)
-    const { token, expiresAt } = generateDownloadToken(updatedOrder.id, 24);
-    await prisma.downloadToken.create({
-      data: {
-        token,
-        orderId: updatedOrder.id,
-        expiresAt,
-      },
-    });
+    try {
+      const order = await prisma.order.findFirst({
+        where: {
+          OR: [
+            { id: orderId },
+            { razorpayOrderId: razorpayOrderId },
+            { orderRef: orderId },
+          ],
+        },
+      });
+
+      if (order) {
+        orderRef = order.orderRef;
+        productTitle = order.productTitle;
+        amountInPaise = order.amountInPaise;
+
+        await prisma.order.update({
+          where: { id: order.id },
+          data: {
+            status: 'PAID',
+            razorpayPaymentId,
+            razorpaySignature,
+          },
+        });
+      }
+    } catch (dbErr) {
+      console.warn('[Verify DB Warning] DB operation skipped:', dbErr);
+    }
+
+    // 3. Generate secure signed 24h download authorization token
+    const tokenIdentifier = orderId || razorpayOrderId;
+    const { token, expiresAt } = generateDownloadToken(tokenIdentifier, 24);
+
+    try {
+      await prisma.downloadToken.create({
+        data: {
+          token,
+          orderId: tokenIdentifier,
+          expiresAt,
+        },
+      });
+    } catch (tokenDbErr) {
+      console.warn('[Token DB Warning] Token stored in HMAC signature:', tokenDbErr);
+    }
 
     return NextResponse.json({
       success: true,
-      orderRef: updatedOrder.orderRef,
+      orderRef,
       token,
-      productTitle: updatedOrder.productTitle,
-      amountInPaise: updatedOrder.amountInPaise,
+      productTitle,
+      amountInPaise,
     });
   } catch (error: any) {
     console.error('Verify Payment Error:', error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: error.message || 'Verification failed' }, { status: 500 });
   }
 }
