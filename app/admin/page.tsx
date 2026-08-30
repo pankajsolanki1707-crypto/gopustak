@@ -6,6 +6,9 @@ import {
   ShieldCheck,
   Edit,
   Save,
+  Trash2,
+  PlusCircle,
+  X,
   CheckCircle,
   AlertCircle,
   RefreshCw,
@@ -17,7 +20,6 @@ import {
   ArrowLeft,
   Lock,
   LogOut,
-  Check,
 } from 'lucide-react';
 import { ProductItem } from '@/components/ThreeBooksSection';
 
@@ -36,6 +38,25 @@ export default function AdminPage() {
   const [editFormData, setEditFormData] = useState<any>({});
   const [saveStatus, setSaveStatus] = useState<string>('');
   const [isSaving, setIsSaving] = useState(false);
+
+  // Add Product Modal State
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [newProductData, setNewProductData] = useState({
+    title: '',
+    subtitle: '',
+    slug: '',
+    priceInRs: 99,
+    mrpInRs: 299,
+    language: 'English',
+    edition: '2026 Edition',
+    pageCount: '250+ Pages',
+    shortDescription: '',
+    longDescription: '',
+    coverImage: '/covers/cover-product-2.png',
+    pdfFileName: 'EP_GUIDE_ENG.pdf',
+    category: 'UPSC EPFO / APFC',
+    published: true,
+  });
 
   // Check saved session on mount
   useEffect(() => {
@@ -120,7 +141,7 @@ export default function AdminPage() {
     try {
       const res = await fetch('/api/admin/products');
       const data = await res.json();
-      if (data.success && Array.isArray(data.products) && data.products.length > 0) {
+      if (data.success && Array.isArray(data.products)) {
         setProducts(data.products);
         setOrders(data.orders || []);
       }
@@ -168,14 +189,7 @@ export default function AdminPage() {
         }),
       });
 
-      const text = await res.text();
-      let data: any = {};
-      try {
-        data = JSON.parse(text);
-      } catch (parseErr) {
-        throw new Error(`Server returned unexpected response: ${text.slice(0, 100)}`);
-      }
-
+      const data = await res.json();
       if (data.success) {
         setSaveStatus(`✓ Saved successfully! Price updated to ₹${editFormData.priceInRs} (MRP: ₹${editFormData.mrpInRs})`);
         setEditProductId(null);
@@ -185,6 +199,92 @@ export default function AdminPage() {
       }
     } catch (err: any) {
       setSaveStatus(`Save failed: ${err.message}`);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDeleteProduct = async (productId: string, productTitle: string) => {
+    const confirmDelete = window.confirm(`Are you sure you want to remove "${productTitle}" from the database?`);
+    if (!confirmDelete) return;
+
+    setSaveStatus('Removing product...');
+    try {
+      const res = await fetch('/api/admin/products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'delete',
+          id: productId,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        setSaveStatus(`✓ Removed "${productTitle}" successfully.`);
+        await loadData();
+      } else {
+        setSaveStatus(`Delete error: ${data.error}`);
+      }
+    } catch (err: any) {
+      setSaveStatus(`Delete failed: ${err.message}`);
+    }
+  };
+
+  const handleCreateProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSaving(true);
+    setSaveStatus('Creating new ebook in database...');
+
+    try {
+      const res = await fetch('/api/admin/products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'create',
+          title: newProductData.title,
+          subtitle: newProductData.subtitle,
+          slug: newProductData.slug || newProductData.title.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+          priceInPaise: Math.round(Number(newProductData.priceInRs) * 100),
+          mrpInPaise: Math.round(Number(newProductData.mrpInRs) * 100),
+          language: newProductData.language,
+          edition: newProductData.edition,
+          pageCount: newProductData.pageCount,
+          shortDescription: newProductData.shortDescription,
+          longDescription: newProductData.longDescription || newProductData.shortDescription,
+          coverImage: newProductData.coverImage,
+          pdfFileName: newProductData.pdfFileName,
+          category: newProductData.category,
+          published: Boolean(newProductData.published),
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        setSaveStatus(`✓ Created "${newProductData.title}" successfully!`);
+        setIsAddModalOpen(false);
+        setNewProductData({
+          title: '',
+          subtitle: '',
+          slug: '',
+          priceInRs: 99,
+          mrpInRs: 299,
+          language: 'English',
+          edition: '2026 Edition',
+          pageCount: '250+ Pages',
+          shortDescription: '',
+          longDescription: '',
+          coverImage: '/covers/cover-product-2.png',
+          pdfFileName: 'EP_GUIDE_ENG.pdf',
+          category: 'UPSC EPFO / APFC',
+          published: true,
+        });
+        await loadData();
+      } else {
+        setSaveStatus(`Error adding product: ${data.error}`);
+      }
+    } catch (err: any) {
+      setSaveStatus(`Add product failed: ${err.message}`);
     } finally {
       setIsSaving(false);
     }
@@ -283,18 +383,25 @@ export default function AdminPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              onClick={() => setIsAddModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-extrabold bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 shadow-md transition-all active:scale-95"
+            >
+              <PlusCircle className="w-4 h-4" />
+              Add New Ebook
+            </button>
             <button
               onClick={loadData}
               disabled={loading}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-750 text-slate-200 border border-slate-700 transition-all"
+              className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-750 text-slate-200 border border-slate-700 transition-all"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-              Refresh Data
+              Refresh
             </button>
             <button
               onClick={handleLogout}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 transition-all"
+              className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-semibold bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 transition-all"
             >
               <LogOut className="w-3.5 h-3.5" />
               Sign Out
@@ -308,13 +415,13 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* 3 Ebooks List */}
+        {/* Ebooks List */}
         <div className="bg-slate-900 rounded-3xl border border-slate-800 p-6 sm:p-8 shadow-xl space-y-6">
           <div className="flex items-center justify-between border-b border-slate-800 pb-4">
             <div className="flex items-center gap-2">
               <Package className="w-5 h-5 text-amber-400" />
               <h2 className="text-lg font-bold text-white">
-                Active Ebooks in Database ({products.length} Products)
+                Active Ebooks in Storefront ({products.length} Products)
               </h2>
             </div>
             <span className="text-xs font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-3 py-1 rounded-full">
@@ -450,19 +557,29 @@ export default function AdminPage() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-6 shrink-0 w-full md:w-auto justify-between md:justify-end">
+                  <div className="flex items-center gap-4 shrink-0 w-full md:w-auto justify-between md:justify-end">
                     <div className="text-right">
                       <div className="text-lg font-black text-amber-400">₹{priceInRs}</div>
                       <div className="text-xs text-slate-500 line-through">MRP: ₹{mrpInRs}</div>
                     </div>
 
-                    <button
-                      onClick={() => startEdit(product)}
-                      className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-md transition-all active:scale-95"
-                    >
-                      <Edit className="w-3.5 h-3.5" />
-                      Edit Price & Details
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => startEdit(product)}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-md transition-all active:scale-95"
+                      >
+                        <Edit className="w-3.5 h-3.5" />
+                        Edit
+                      </button>
+
+                      <button
+                        onClick={() => handleDeleteProduct(product.id, product.title)}
+                        title="Remove Product"
+                        className="p-2.5 rounded-xl text-xs font-semibold bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 transition-all"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               );
@@ -526,6 +643,188 @@ export default function AdminPage() {
         </div>
 
       </div>
+
+      {/* Add New Product Modal */}
+      {isAddModalOpen && (
+        <div className="fixed inset-0 z-50 overflow-y-auto preview-modal-bg flex items-center justify-center p-4">
+          <div className="relative bg-slate-900 w-full max-w-2xl rounded-3xl shadow-2xl border border-slate-800 overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-950">
+              <div className="flex items-center gap-2">
+                <PlusCircle className="w-5 h-5 text-amber-400" />
+                <h3 className="text-base font-bold text-white">Add New Ebook to Storefront</h3>
+              </div>
+              <button
+                onClick={() => setIsAddModalOpen(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateProduct} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    Book Title <span className="text-red-400">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. UPSC EPFO APFC Mock Test Series"
+                    value={newProductData.title}
+                    onChange={(e) => setNewProductData({ ...newProductData, title: e.target.value })}
+                    className="w-full p-2.5 text-xs rounded-xl border border-slate-700 bg-slate-950 text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    Subtitle
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Complete Study Notes & Practice"
+                    value={newProductData.subtitle}
+                    onChange={(e) => setNewProductData({ ...newProductData, subtitle: e.target.value })}
+                    className="w-full p-2.5 text-xs rounded-xl border border-slate-700 bg-slate-950 text-white"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    URL Slug <span className="text-red-400">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. upsc-epfo-mock-tests"
+                    value={newProductData.slug}
+                    onChange={(e) => setNewProductData({ ...newProductData, slug: e.target.value })}
+                    className="w-full p-2.5 text-xs rounded-xl border border-slate-700 bg-slate-950 text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    Selling Price (₹) <span className="text-red-400">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    value={newProductData.priceInRs}
+                    onChange={(e) => setNewProductData({ ...newProductData, priceInRs: Number(e.target.value) })}
+                    className="w-full p-2.5 text-xs rounded-xl border border-slate-700 bg-slate-950 text-white font-bold text-amber-400"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    MRP (₹) <span className="text-red-400">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    value={newProductData.mrpInRs}
+                    onChange={(e) => setNewProductData({ ...newProductData, mrpInRs: Number(e.target.value) })}
+                    className="w-full p-2.5 text-xs rounded-xl border border-slate-700 bg-slate-950 text-white"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    Language
+                  </label>
+                  <input
+                    type="text"
+                    value={newProductData.language}
+                    onChange={(e) => setNewProductData({ ...newProductData, language: e.target.value })}
+                    className="w-full p-2.5 text-xs rounded-xl border border-slate-700 bg-slate-950 text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    Edition
+                  </label>
+                  <input
+                    type="text"
+                    value={newProductData.edition}
+                    onChange={(e) => setNewProductData({ ...newProductData, edition: e.target.value })}
+                    className="w-full p-2.5 text-xs rounded-xl border border-slate-700 bg-slate-950 text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    Page Count / Format
+                  </label>
+                  <input
+                    type="text"
+                    value={newProductData.pageCount}
+                    onChange={(e) => setNewProductData({ ...newProductData, pageCount: e.target.value })}
+                    className="w-full p-2.5 text-xs rounded-xl border border-slate-700 bg-slate-950 text-white"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  Short Description <span className="text-red-400">*</span>
+                </label>
+                <textarea
+                  rows={2}
+                  required
+                  placeholder="Summary of what the ebook covers..."
+                  value={newProductData.shortDescription}
+                  onChange={(e) => setNewProductData({ ...newProductData, shortDescription: e.target.value })}
+                  className="w-full p-2.5 text-xs rounded-xl border border-slate-700 bg-slate-950 text-white"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    Cover Image URL / Path
+                  </label>
+                  <input
+                    type="text"
+                    value={newProductData.coverImage}
+                    onChange={(e) => setNewProductData({ ...newProductData, coverImage: e.target.value })}
+                    className="w-full p-2.5 text-xs rounded-xl border border-slate-700 bg-slate-950 text-white font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    Secure PDF Filename (in server_storage/ebooks)
+                  </label>
+                  <input
+                    type="text"
+                    value={newProductData.pdfFileName}
+                    onChange={(e) => setNewProductData({ ...newProductData, pdfFileName: e.target.value })}
+                    className="w-full p-2.5 text-xs rounded-xl border border-slate-700 bg-slate-950 text-white font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-3 flex items-center justify-end gap-3 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setIsAddModalOpen(false)}
+                  className="px-4 py-2.5 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-750 text-slate-300"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSaving}
+                  className="px-6 py-2.5 rounded-xl text-xs font-extrabold bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-md active:scale-95 disabled:opacity-70"
+                >
+                  {isSaving ? 'Creating...' : 'Save & Publish Ebook'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -27,16 +27,82 @@ export async function GET(req: Request) {
   }
 }
 
-async function handleUpdateProduct(req: Request) {
+export async function POST(req: Request) {
   try {
     const data = await req.json();
-    const { id, slug, priceInPaise, mrpInPaise, title, subtitle, shortDescription, longDescription, published } = data;
+    const { action } = data;
 
-    if (!id && !slug) {
-      return NextResponse.json({ success: false, error: 'Product ID or slug is required' }, { status: 400 });
+    // Handle Create New Product
+    if (action === 'create') {
+      const {
+        title,
+        subtitle,
+        slug,
+        shortDescription,
+        longDescription,
+        coverImage,
+        pdfFileName,
+        language,
+        edition,
+        pageCount,
+        priceInPaise,
+        mrpInPaise,
+        category,
+        published,
+      } = data;
+
+      if (!title || !slug) {
+        return NextResponse.json({ success: false, error: 'Title and Slug are required' }, { status: 400 });
+      }
+
+      // Check for existing slug
+      const existingSlug = await prisma.product.findUnique({
+        where: { slug: slug.trim().toLowerCase() },
+      });
+
+      if (existingSlug) {
+        return NextResponse.json({ success: false, error: 'A product with this slug already exists.' }, { status: 400 });
+      }
+
+      const newProduct = await prisma.product.create({
+        data: {
+          title: title.trim(),
+          subtitle: subtitle?.trim() || '',
+          slug: slug.trim().toLowerCase().replace(/\s+/g, '-'),
+          shortDescription: shortDescription?.trim() || title,
+          longDescription: longDescription?.trim() || shortDescription || title,
+          coverImage: coverImage?.trim() || '/covers/cover-product-2.png',
+          pdfFileName: pdfFileName?.trim() || 'EP_GUIDE_ENG.pdf',
+          language: language?.trim() || 'English',
+          edition: edition?.trim() || '2026 Edition',
+          pageCount: pageCount?.trim() || 'PDF Ebook',
+          priceInPaise: Number(priceInPaise) || 9900,
+          mrpInPaise: Number(mrpInPaise) || 29900,
+          category: category?.trim() || 'UPSC EPFO / APFC',
+          published: published !== false,
+          highlights: JSON.stringify(['Instant Digital Download', 'PDF Format', 'Printable']),
+          samplePages: JSON.stringify(['/samples/product-2-sample-1.png']),
+        },
+      });
+
+      return NextResponse.json({ success: true, product: newProduct });
     }
 
-    // Lookup by ID or Slug for resilient matching
+    // Handle Delete Product
+    if (action === 'delete') {
+      const { id } = data;
+      if (!id) {
+        return NextResponse.json({ success: false, error: 'Product ID required to delete' }, { status: 400 });
+      }
+      await prisma.product.delete({
+        where: { id },
+      });
+      return NextResponse.json({ success: true, message: 'Product removed successfully' });
+    }
+
+    // Handle Update Product
+    const { id, slug, priceInPaise, mrpInPaise, title, subtitle, shortDescription, longDescription, published } = data;
+
     const existing = await prisma.product.findFirst({
       where: {
         OR: [
@@ -64,26 +130,29 @@ async function handleUpdateProduct(req: Request) {
       },
     });
 
-    console.log(`[Admin Update Product] ${updated.slug} updated successfully -> Price: ₹${updated.priceInPaise / 100}, MRP: ₹${updated.mrpInPaise / 100}`);
-
-    return NextResponse.json({
-      success: true,
-      product: {
-        ...updated,
-        highlights: typeof updated.highlights === 'string' ? JSON.parse(updated.highlights || '[]') : updated.highlights,
-        samplePages: typeof updated.samplePages === 'string' ? JSON.parse(updated.samplePages || '[]') : updated.samplePages,
-      },
-    });
+    return NextResponse.json({ success: true, product: updated });
   } catch (error: any) {
-    console.error('[Admin Update Product Error]:', error);
-    return NextResponse.json({ success: false, error: error.message || 'Database update failed' }, { status: 500 });
+    console.error('[Admin Product Operation Error]:', error);
+    return NextResponse.json({ success: false, error: error.message || 'Operation failed' }, { status: 500 });
   }
 }
 
-export async function PUT(req: Request) {
-  return handleUpdateProduct(req);
-}
+export async function DELETE(req: Request) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get('id');
 
-export async function POST(req: Request) {
-  return handleUpdateProduct(req);
+    if (!id) {
+      return NextResponse.json({ success: false, error: 'Product ID parameter is required' }, { status: 400 });
+    }
+
+    await prisma.product.delete({
+      where: { id },
+    });
+
+    return NextResponse.json({ success: true, message: 'Product deleted' });
+  } catch (error: any) {
+    console.error('[Admin DELETE Error]:', error);
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
 }
