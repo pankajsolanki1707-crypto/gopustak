@@ -7,9 +7,9 @@ import { hashToken, verifySignedOrderToken } from '@/lib/secure-token';
 export const dynamic = 'force-dynamic';
 
 const PDF_MAP: Record<string, string> = {
-  'upsc-epfo-apfc-2026-special-subjects-mock-tests-hindi': 'upsc_epfo_special_subjects_mock_test_hindi.pdf',
+  'upsc-epfo-apfc-2026-special-subjects-mock-tests-hindi': 'UPSC_APFC_Special plus MCQ_all_in_one_hindi.pdf',
   'crack-upsc-epfo-apfc-2026-blueprint': 'EP_GUIDE_ENG.pdf',
-  'upsc-epfo-apfc-practice-ebook-full-mock-tests': 'UPSC_EPFO_SPECIAL_SUBJECTS_MOCK_TEST2.pdf',
+  'upsc-epfo-apfc-practice-ebook-full-mock-tests': 'Upsc_APFC_All_in_one_Special subject plus mock plus best 500 mcq_english.pdf',
 };
 
 export async function GET(req: Request) {
