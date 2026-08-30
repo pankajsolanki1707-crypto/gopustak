@@ -61,26 +61,37 @@ export async function POST(req: Request) {
       });
 
       if (existingSlug) {
-        return NextResponse.json({ success: false, error: 'A product with this slug already exists.' }, { status: 400 });
+        return NextResponse.json(
+          { success: false, error: `An ebook with slug "${slug}" already exists.` },
+          { status: 400 }
+        );
       }
+
+      const count = await prisma.product.count();
 
       const newProduct = await prisma.product.create({
         data: {
           title: title.trim(),
-          subtitle: subtitle?.trim() || '',
-          slug: slug.trim().toLowerCase().replace(/\s+/g, '-'),
+          subtitle: subtitle?.trim() || null,
+          slug: slug.trim().toLowerCase(),
           shortDescription: shortDescription?.trim() || title,
-          longDescription: longDescription?.trim() || shortDescription || title,
+          longDescription: longDescription?.trim() || shortDescription?.trim() || title,
           coverImage: coverImage?.trim() || '/covers/cover-product-2.png',
           pdfFileName: pdfFileName?.trim() || 'EP_GUIDE_ENG.pdf',
           language: language?.trim() || 'English',
+          format: 'PDF (Digital Ebook)',
+          pageCount: pageCount?.trim() || 'Verified PDF',
           edition: edition?.trim() || '2026 Edition',
-          pageCount: pageCount?.trim() || 'PDF Ebook',
+          displayOrder: count + 1,
           priceInPaise: Number(priceInPaise) || 9900,
           mrpInPaise: Number(mrpInPaise) || 29900,
           category: category?.trim() || 'UPSC EPFO / APFC',
           published: published !== false,
-          highlights: JSON.stringify(['Instant Digital Download', 'PDF Format', 'Printable']),
+          highlights: JSON.stringify([
+            'Instant Digital Access',
+            'PDF Format (Direct Printable)',
+            'Grounded in UPSC Exam Pattern',
+          ]),
           samplePages: JSON.stringify(['/samples/product-2-sample-1.png']),
         },
       });
@@ -101,7 +112,22 @@ export async function POST(req: Request) {
     }
 
     // Handle Update Product
-    const { id, slug, priceInPaise, mrpInPaise, title, subtitle, shortDescription, longDescription, published } = data;
+    const {
+      id,
+      slug,
+      priceInPaise,
+      mrpInPaise,
+      title,
+      subtitle,
+      shortDescription,
+      longDescription,
+      coverImage,
+      pdfFileName,
+      language,
+      edition,
+      pageCount,
+      published,
+    } = data;
 
     const existing = await prisma.product.findFirst({
       where: {
@@ -126,6 +152,11 @@ export async function POST(req: Request) {
         ...(subtitle !== undefined ? { subtitle } : {}),
         ...(shortDescription ? { shortDescription } : {}),
         ...(longDescription ? { longDescription } : {}),
+        ...(coverImage ? { coverImage } : {}),
+        ...(pdfFileName ? { pdfFileName } : {}),
+        ...(language ? { language } : {}),
+        ...(edition ? { edition } : {}),
+        ...(pageCount ? { pageCount } : {}),
         ...(published !== undefined ? { published: Boolean(published) } : {}),
       },
     });
@@ -143,16 +174,16 @@ export async function DELETE(req: Request) {
     const id = searchParams.get('id');
 
     if (!id) {
-      return NextResponse.json({ success: false, error: 'Product ID parameter is required' }, { status: 400 });
+      return NextResponse.json({ success: false, error: 'Product ID required' }, { status: 400 });
     }
 
     await prisma.product.delete({
       where: { id },
     });
 
-    return NextResponse.json({ success: true, message: 'Product deleted' });
+    return NextResponse.json({ success: true, message: 'Product deleted successfully' });
   } catch (error: any) {
-    console.error('[Admin DELETE Error]:', error);
+    console.error('[Admin DELETE Product Error]:', error);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }

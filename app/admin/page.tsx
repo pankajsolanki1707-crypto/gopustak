@@ -1,47 +1,137 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import {
   ShieldCheck,
-  Edit,
   Save,
-  Trash2,
-  PlusCircle,
-  X,
-  CheckCircle,
-  AlertCircle,
   RefreshCw,
   Eye,
   EyeOff,
-  DollarSign,
-  Package,
-  Layers,
-  ArrowLeft,
-  Lock,
+  ShoppingBag,
+  Clock,
+  CheckCircle,
+  AlertCircle,
+  FileText,
+  PlusCircle,
+  Edit,
+  Trash2,
   LogOut,
+  UploadCloud,
+  FileUp,
+  Image as ImageIcon,
+  X,
 } from 'lucide-react';
-import { ProductItem } from '@/components/ThreeBooksSection';
+
+interface AdminProduct {
+  id: string;
+  slug: string;
+  title: string;
+  subtitle?: string | null;
+  shortDescription: string;
+  longDescription: string;
+  coverImage: string;
+  pdfFileName: string;
+  language: string;
+  format: string;
+  pageCount?: string | null;
+  edition: string;
+  priceInPaise: number;
+  mrpInPaise: number;
+  category: string;
+  displayOrder: number;
+  published: boolean;
+  highlights: string[];
+}
+
+interface AdminOrder {
+  id: string;
+  orderRef: string;
+  customerName: string;
+  customerEmail: string;
+  customerPhone?: string | null;
+  productTitle: string;
+  amountInPaise: number;
+  status: string;
+  createdAt: string;
+}
 
 export default function AdminPage() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [emailInput, setEmailInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [authError, setAuthError] = useState('');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
-  const [products, setProducts] = useState<ProductItem[]>([]);
-  const [orders, setOrders] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [editProductId, setEditProductId] = useState<string | null>(null);
-  const [editFormData, setEditFormData] = useState<any>({});
-  const [saveStatus, setSaveStatus] = useState<string>('');
+  const [products, setProducts] = useState<AdminProduct[]>([]);
+  const [orders, setOrders] = useState<AdminOrder[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<string>('');
+
+  // Upload States
+  const [isUploadingCover, setIsUploadingCover] = useState(false);
+  const [isUploadingPdf, setIsUploadingPdf] = useState(false);
+  const [uploadFeedback, setUploadFeedback] = useState<string | null>(null);
+
+  const addCoverInputRef = useRef<HTMLInputElement>(null);
+  const addPdfInputRef = useRef<HTMLInputElement>(null);
+  const editCoverInputRef = useRef<HTMLInputElement>(null);
+  const editPdfInputRef = useRef<HTMLInputElement>(null);
+
+  // Edit Product State
+  const [editProductId, setEditProductId] = useState<string | null>(null);
+  const [editFormData, setEditFormData] = useState<{
+    id: string;
+    slug: string;
+    title: string;
+    subtitle: string;
+    shortDescription: string;
+    longDescription: string;
+    coverImage: string;
+    pdfFileName: string;
+    language: string;
+    edition: string;
+    pageCount: string;
+    priceInRs: number | string;
+    mrpInRs: number | string;
+    published: boolean;
+  }>({
+    id: '',
+    slug: '',
+    title: '',
+    subtitle: '',
+    shortDescription: '',
+    longDescription: '',
+    coverImage: '',
+    pdfFileName: '',
+    language: 'English',
+    edition: '2026 Edition',
+    pageCount: '',
+    priceInRs: 99,
+    mrpInRs: 299,
+    published: true,
+  });
 
   // Add Product Modal State
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [newProductData, setNewProductData] = useState({
+  const [newProductData, setNewProductData] = useState<{
+    title: string;
+    subtitle: string;
+    slug: string;
+    priceInRs: number | string;
+    mrpInRs: number | string;
+    language: string;
+    edition: string;
+    pageCount: string;
+    shortDescription: string;
+    longDescription: string;
+    coverImage: string;
+    pdfFileName: string;
+    category: string;
+    published: boolean;
+  }>({
     title: '',
     subtitle: '',
     slug: '',
@@ -49,7 +139,7 @@ export default function AdminPage() {
     mrpInRs: 299,
     language: 'English',
     edition: '2026 Edition',
-    pageCount: '250+ Pages',
+    pageCount: '250+ Pages (PDF)',
     shortDescription: '',
     longDescription: '',
     coverImage: '/covers/cover-product-2.png',
@@ -58,7 +148,7 @@ export default function AdminPage() {
     published: true,
   });
 
-  // Check saved session on mount
+  // Check persistent session on mount
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const savedAuth = sessionStorage.getItem('gopustak_admin_auth');
@@ -74,16 +164,13 @@ export default function AdminPage() {
     setAuthError('');
     setIsLoggingIn(true);
 
-    const cleanEmail = emailInput.trim().toLowerCase();
-    const cleanPassword = passwordInput.trim();
-
     try {
       const res = await fetch('/api/admin/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          email: cleanEmail,
-          password: cleanPassword,
+          email: emailInput.trim(),
+          password: passwordInput.trim(),
         }),
       });
 
@@ -110,25 +197,71 @@ export default function AdminPage() {
     if (typeof window !== 'undefined') {
       sessionStorage.removeItem('gopustak_admin_auth');
     }
+    setEmailInput('');
+    setPasswordInput('');
   };
 
   const loadData = async () => {
-    setLoading(true);
+    setIsLoading(true);
     try {
       const res = await fetch('/api/admin/products');
       const data = await res.json();
-      if (data.success && Array.isArray(data.products)) {
-        setProducts(data.products);
+      if (data.success) {
+        setProducts(data.products || []);
         setOrders(data.orders || []);
       }
     } catch (err) {
-      console.error('Error loading admin products:', err);
+      console.error('Failed to load admin data:', err);
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
-  const startEdit = (product: ProductItem) => {
+  // Upload handler for cover images & PDF ebooks from local computer
+  const handleFileUpload = async (file: File, type: 'cover' | 'pdf', isEditing = false) => {
+    if (!file) return;
+    if (type === 'cover') setIsUploadingCover(true);
+    if (type === 'pdf') setIsUploadingPdf(true);
+    setUploadFeedback(`Uploading ${file.name}...`);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('type', type);
+
+      const res = await fetch('/api/admin/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        setUploadFeedback(`✓ ${file.name} uploaded successfully!`);
+        if (type === 'cover') {
+          if (isEditing) {
+            setEditFormData((prev) => ({ ...prev, coverImage: data.url }));
+          } else {
+            setNewProductData((prev) => ({ ...prev, coverImage: data.url }));
+          }
+        } else if (type === 'pdf') {
+          if (isEditing) {
+            setEditFormData((prev) => ({ ...prev, pdfFileName: data.filename }));
+          } else {
+            setNewProductData((prev) => ({ ...prev, pdfFileName: data.filename }));
+          }
+        }
+      } else {
+        setUploadFeedback(`Upload error: ${data.error}`);
+      }
+    } catch (err: any) {
+      setUploadFeedback(`Upload failed: ${err.message}`);
+    } finally {
+      setIsUploadingCover(false);
+      setIsUploadingPdf(false);
+    }
+  };
+
+  const startEdit = (product: AdminProduct) => {
     setEditProductId(product.id);
     setEditFormData({
       id: product.id,
@@ -137,11 +270,17 @@ export default function AdminPage() {
       subtitle: product.subtitle || '',
       shortDescription: product.shortDescription,
       longDescription: product.longDescription,
+      coverImage: product.coverImage,
+      pdfFileName: product.pdfFileName,
+      language: product.language,
+      edition: product.edition,
+      pageCount: product.pageCount || '',
       priceInRs: Math.round(product.priceInPaise / 100),
       mrpInRs: Math.round(product.mrpInPaise / 100),
       published: product.published !== false,
     });
     setSaveStatus('');
+    setUploadFeedback(null);
   };
 
   const handleSave = async () => {
@@ -159,6 +298,11 @@ export default function AdminPage() {
           subtitle: editFormData.subtitle,
           shortDescription: editFormData.shortDescription,
           longDescription: editFormData.longDescription,
+          coverImage: editFormData.coverImage,
+          pdfFileName: editFormData.pdfFileName,
+          language: editFormData.language,
+          edition: editFormData.edition,
+          pageCount: editFormData.pageCount,
           priceInPaise: Math.round(Number(editFormData.priceInRs) * 100),
           mrpInPaise: Math.round(Number(editFormData.mrpInRs) * 100),
           published: Boolean(editFormData.published),
@@ -247,7 +391,7 @@ export default function AdminPage() {
           mrpInRs: 299,
           language: 'English',
           edition: '2026 Edition',
-          pageCount: '250+ Pages',
+          pageCount: '250+ Pages (PDF)',
           shortDescription: '',
           longDescription: '',
           coverImage: '/covers/cover-product-2.png',
@@ -324,15 +468,10 @@ export default function AdminPage() {
             <button
               type="submit"
               disabled={isLoggingIn}
-              className="w-full py-3 rounded-xl text-sm font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-lg shadow-amber-500/20 transition-all active:scale-95 disabled:opacity-70"
+              className="w-full py-3 rounded-xl text-sm font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 transition-all shadow-md active:scale-95 disabled:opacity-50"
             >
-              {isLoggingIn ? 'Verifying...' : 'Sign In to Admin'}
+              {isLoggingIn ? 'Verifying...' : 'Unlock Admin Panel'}
             </button>
-            <div className="text-center pt-2">
-              <Link href="/" className="text-xs text-slate-400 hover:text-amber-400 transition-colors">
-                ← Back to Storefront
-              </Link>
-            </div>
           </form>
         </div>
       </div>
@@ -340,72 +479,105 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="bg-slate-950 text-white min-h-screen py-10 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto space-y-8">
+    <div className="min-h-screen bg-slate-950 text-slate-100 py-10 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-6xl mx-auto space-y-8">
         
-        {/* Top Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-sm">
-          <div>
-            <div className="flex items-center gap-2">
-              <Link href="/" className="text-xs text-slate-400 hover:text-amber-400 transition-colors">
-                ← Return to Storefront
-              </Link>
+        {/* Top Header Bar */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-slate-900 p-6 rounded-3xl border border-slate-800 shadow-xl">
+          <div className="flex items-center space-x-3.5">
+            <div className="h-12 w-12 rounded-2xl overflow-hidden bg-white p-1 shadow flex items-center justify-center shrink-0 border border-slate-700">
+              <img src="/images/logo.png" alt="GoPustak" className="w-full h-full object-contain" />
             </div>
-            <h1 className="text-2xl font-extrabold text-white mt-1">
-              GoPustak Admin Dashboard
-            </h1>
-            <p className="text-xs text-slate-400">
-              Database Product Management & Order Tracking
-            </p>
+            <div>
+              <h1 className="text-xl sm:text-2xl font-extrabold text-white flex items-center gap-2">
+                <span>GoPustak Admin Panel</span>
+                <span className="text-xs bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2.5 py-0.5 rounded-full font-semibold">
+                  Live Production
+                </span>
+              </h1>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Manage live catalog pricing, upload covers/PDFs, and monitor customer orders
+              </p>
+            </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
             <button
               onClick={() => setIsAddModalOpen(true)}
-              className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-extrabold bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 shadow-md transition-all active:scale-95"
+              className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-extrabold bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-md shadow-amber-500/20 transition-all active:scale-95 whitespace-nowrap"
             >
               <PlusCircle className="w-4 h-4" />
               Add New Ebook
             </button>
+
             <button
               onClick={loadData}
-              disabled={loading}
-              className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-750 text-slate-200 border border-slate-700 transition-all"
+              disabled={isLoading}
+              className="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-colors"
+              title="Refresh Data"
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-              Refresh
+              <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
             </button>
+
             <button
               onClick={handleLogout}
-              className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-semibold bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 transition-all"
+              className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-red-500/20 hover:text-red-300 text-slate-300 border border-slate-700 transition-colors"
+              title="Sign Out"
             >
               <LogOut className="w-3.5 h-3.5" />
-              Sign Out
+              <span>Sign Out</span>
             </button>
           </div>
         </div>
 
+        {/* Global Action Status Banner */}
         {saveStatus && (
-          <div className={`p-4 rounded-xl border text-sm font-medium ${saveStatus.includes('✓') ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300' : 'bg-amber-500/10 border-amber-500/30 text-amber-300'}`}>
-            {saveStatus}
+          <div
+            className={`p-4 rounded-2xl text-xs font-semibold flex items-center gap-2 border shadow-lg animate-in fade-in duration-200 ${
+              saveStatus.includes('✓')
+                ? 'bg-emerald-950/80 text-emerald-300 border-emerald-500/30'
+                : 'bg-amber-950/80 text-amber-300 border-amber-500/30'
+            }`}
+          >
+            {saveStatus.includes('✓') ? <CheckCircle className="w-4 h-4 shrink-0 text-emerald-400" /> : <AlertCircle className="w-4 h-4 shrink-0 text-amber-400" />}
+            <span>{saveStatus}</span>
           </div>
         )}
 
-        {/* Ebooks List */}
+        {/* Upload Feedback Banner */}
+        {uploadFeedback && (
+          <div className="p-3.5 rounded-xl bg-slate-900 border border-sky-500/30 text-sky-300 text-xs font-medium flex items-center justify-between">
+            <span>{uploadFeedback}</span>
+            <button onClick={() => setUploadFeedback(null)} className="text-slate-400 hover:text-white">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
+        {/* Products Management List */}
         <div className="bg-slate-900 rounded-3xl border border-slate-800 p-6 sm:p-8 shadow-xl space-y-6">
-          <div className="flex items-center justify-between border-b border-slate-800 pb-4">
-            <div className="flex items-center gap-2">
-              <Package className="w-5 h-5 text-amber-400" />
-              <h2 className="text-lg font-bold text-white">
-                Active Ebooks in Storefront ({products.length} Products)
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-4">
+            <div>
+              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                <span>Ebook Catalog & Pricing</span>
+                <span className="text-xs bg-slate-800 text-amber-400 px-2.5 py-0.5 rounded-full font-mono">
+                  {products.length} Products
+                </span>
               </h2>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Edit prices, change book metadata, or upload new book covers and PDFs directly from your computer
+              </p>
             </div>
-            <span className="text-xs font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-3 py-1 rounded-full">
-              Category: UPSC EPFO / APFC
-            </span>
+            <Link
+              href="/"
+              target="_blank"
+              className="text-xs text-amber-400 hover:text-amber-300 font-semibold flex items-center gap-1"
+            >
+              View Live Website →
+            </Link>
           </div>
 
-          <div className="space-y-6">
+          <div className="space-y-4">
             {products.map((product) => {
               const isEditing = editProductId === product.id;
               const priceInRs = Math.round(product.priceInPaise / 100);
@@ -413,25 +585,29 @@ export default function AdminPage() {
 
               if (isEditing) {
                 return (
-                  <div key={product.id} className="p-6 rounded-2xl bg-slate-950 border-2 border-amber-500/50 space-y-4 shadow-inner">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-amber-400 uppercase tracking-wide">
-                        Editing: {product.title}
-                      </span>
+                  <div
+                    key={product.id}
+                    className="p-6 rounded-2xl bg-slate-950 border-2 border-amber-500/50 shadow-xl space-y-5 animate-in fade-in duration-200"
+                  >
+                    <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                      <div className="flex items-center gap-2 text-sm font-bold text-amber-400">
+                        <Edit className="w-4 h-4" />
+                        <span>Editing: {product.title}</span>
+                      </div>
                       <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => setEditProductId(null)}
+                          className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300"
+                        >
+                          Cancel
+                        </button>
                         <button
                           onClick={handleSave}
                           disabled={isSaving}
-                          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-md transition-all active:scale-95 disabled:opacity-70"
+                          className="inline-flex items-center gap-1 px-4 py-1.5 rounded-lg text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 shadow active:scale-95"
                         >
                           <Save className="w-3.5 h-3.5" />
                           {isSaving ? 'Saving...' : 'Save Changes'}
-                        </button>
-                        <button
-                          onClick={() => setEditProductId(null)}
-                          className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700"
-                        >
-                          Cancel
                         </button>
                       </div>
                     </div>
@@ -445,7 +621,7 @@ export default function AdminPage() {
                           type="text"
                           value={editFormData.title}
                           onChange={(e) => setEditFormData({ ...editFormData, title: e.target.value })}
-                          className="w-full p-2.5 text-xs rounded-lg border border-slate-700 bg-slate-900 text-white"
+                          className="w-full p-2.5 text-xs rounded-xl border border-slate-700 bg-slate-900 text-white focus:ring-2 focus:ring-amber-500 focus:outline-none"
                         />
                       </div>
                       <div>
@@ -456,12 +632,12 @@ export default function AdminPage() {
                           type="text"
                           value={editFormData.subtitle}
                           onChange={(e) => setEditFormData({ ...editFormData, subtitle: e.target.value })}
-                          className="w-full p-2.5 text-xs rounded-lg border border-slate-700 bg-slate-900 text-white"
+                          className="w-full p-2.5 text-xs rounded-xl border border-slate-700 bg-slate-900 text-white focus:ring-2 focus:ring-amber-500 focus:outline-none"
                         />
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       <div>
                         <label className="block text-xs font-semibold text-slate-300 mb-1">
                           Selling Price (₹)
@@ -470,7 +646,7 @@ export default function AdminPage() {
                           type="number"
                           value={editFormData.priceInRs}
                           onChange={(e) => setEditFormData({ ...editFormData, priceInRs: e.target.value })}
-                          className="w-full p-2.5 text-xs rounded-lg border border-slate-700 bg-slate-900 text-white font-bold text-amber-400"
+                          className="w-full p-2.5 text-xs rounded-xl border border-slate-700 bg-slate-900 text-white font-bold text-amber-400 focus:ring-2 focus:ring-amber-500 focus:outline-none"
                         />
                       </div>
                       <div>
@@ -481,7 +657,18 @@ export default function AdminPage() {
                           type="number"
                           value={editFormData.mrpInRs}
                           onChange={(e) => setEditFormData({ ...editFormData, mrpInRs: e.target.value })}
-                          className="w-full p-2.5 text-xs rounded-lg border border-slate-700 bg-slate-900 text-white"
+                          className="w-full p-2.5 text-xs rounded-xl border border-slate-700 bg-slate-900 text-white focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-300 mb-1">
+                          Edition
+                        </label>
+                        <input
+                          type="text"
+                          value={editFormData.edition}
+                          onChange={(e) => setEditFormData({ ...editFormData, edition: e.target.value })}
+                          className="w-full p-2.5 text-xs rounded-xl border border-slate-700 bg-slate-900 text-white focus:ring-2 focus:ring-amber-500 focus:outline-none"
                         />
                       </div>
                     </div>
@@ -494,9 +681,106 @@ export default function AdminPage() {
                         rows={2}
                         value={editFormData.shortDescription}
                         onChange={(e) => setEditFormData({ ...editFormData, shortDescription: e.target.value })}
-                        className="w-full p-2.5 text-xs rounded-lg border border-slate-700 bg-slate-900 text-white"
+                        className="w-full p-2.5 text-xs rounded-xl border border-slate-700 bg-slate-900 text-white focus:ring-2 focus:ring-amber-500 focus:outline-none"
                       />
                     </div>
+
+                    {/* Local File Upload Section for Edit Mode */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-800">
+                      {/* Cover Upload */}
+                      <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                            <ImageIcon className="w-3.5 h-3.5 text-amber-400" />
+                            <span>Book Cover Image</span>
+                          </label>
+                          <span className="text-[10px] text-slate-500 font-mono line-clamp-1 max-w-[140px]">
+                            {editFormData.coverImage}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                          {editFormData.coverImage && (
+                            <img
+                              src={editFormData.coverImage}
+                              alt="Cover preview"
+                              className="w-12 h-16 object-cover rounded border border-slate-700 shrink-0"
+                            />
+                          )}
+                          <div className="flex-1 space-y-1.5">
+                            <input
+                              type="file"
+                              ref={editCoverInputRef}
+                              accept="image/png,image/jpeg,image/webp"
+                              className="hidden"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) handleFileUpload(file, 'cover', true);
+                              }}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => editCoverInputRef.current?.click()}
+                              disabled={isUploadingCover}
+                              className="w-full py-2 px-3 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-750 text-slate-200 border border-slate-700 flex items-center justify-center gap-1.5"
+                            >
+                              <UploadCloud className="w-3.5 h-3.5 text-amber-400" />
+                              <span>{isUploadingCover ? 'Uploading Cover...' : 'Upload New Cover from PC'}</span>
+                            </button>
+                            <input
+                              type="text"
+                              value={editFormData.coverImage}
+                              onChange={(e) => setEditFormData({ ...editFormData, coverImage: e.target.value })}
+                              placeholder="/covers/cover-product-1.png"
+                              className="w-full p-1.5 text-[11px] rounded border border-slate-700 bg-slate-950 text-slate-300 font-mono"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* PDF Upload */}
+                      <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                            <FileUp className="w-3.5 h-3.5 text-sky-400" />
+                            <span>Private PDF Ebook</span>
+                          </label>
+                          <span className="text-[10px] text-slate-500 font-mono line-clamp-1 max-w-[140px]">
+                            {editFormData.pdfFileName}
+                          </span>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <input
+                            type="file"
+                            ref={editPdfInputRef}
+                            accept="application/pdf"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) handleFileUpload(file, 'pdf', true);
+                            }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => editPdfInputRef.current?.click()}
+                            disabled={isUploadingPdf}
+                            className="w-full py-2 px-3 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-750 text-slate-200 border border-slate-700 flex items-center justify-center gap-1.5"
+                          >
+                            <FileUp className="w-3.5 h-3.5 text-sky-400" />
+                            <span>{isUploadingPdf ? 'Uploading PDF...' : 'Upload New PDF Ebook from PC'}</span>
+                          </button>
+                          <input
+                            type="text"
+                            value={editFormData.pdfFileName}
+                            onChange={(e) => setEditFormData({ ...editFormData, pdfFileName: e.target.value })}
+                            placeholder="EP_GUIDE_ENG.pdf"
+                            className="w-full p-1.5 text-[11px] rounded border border-slate-700 bg-slate-950 text-slate-300 font-mono"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
                   </div>
                 );
               }
@@ -504,7 +788,7 @@ export default function AdminPage() {
               return (
                 <div
                   key={product.id}
-                  className="p-6 rounded-2xl bg-slate-950 border border-slate-800 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 hover:border-slate-700 transition-colors"
+                  className="p-5 sm:p-6 rounded-2xl bg-slate-950 border border-slate-800 flex flex-col md:flex-row items-start md:items-center justify-between gap-5 hover:border-slate-700 transition-colors"
                 >
                   <div className="flex items-start gap-4">
                     <img
@@ -518,24 +802,28 @@ export default function AdminPage() {
                           {product.edition}
                         </span>
                         <span className="text-[10px] text-slate-400 font-medium">
-                          {product.language} • {product.pageCount || 'PDF'}
+                          {product.language} • {product.pageCount || 'Full Ebook'}
                         </span>
                       </div>
-                      <h3 className="text-base font-bold text-white">
+                      <h3 className="text-base font-bold text-white leading-snug">
                         {product.title}
                       </h3>
                       {product.subtitle && (
-                        <p className="text-xs text-amber-400 font-medium">{product.subtitle}</p>
+                        <p className="text-xs font-semibold text-amber-500">
+                          {product.subtitle}
+                        </p>
                       )}
-                      <p className="text-xs text-slate-400 line-clamp-2 max-w-xl">
-                        {product.shortDescription}
-                      </p>
+                      <div className="flex items-center gap-3 text-[11px] text-slate-500 font-mono pt-1">
+                        <span>PDF: <strong className="text-slate-400">{product.pdfFileName}</strong></span>
+                        <span>•</span>
+                        <span>Slug: <strong className="text-slate-400">/{product.slug}</strong></span>
+                      </div>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-4 shrink-0 w-full md:w-auto justify-between md:justify-end">
+                  <div className="flex items-center gap-4 shrink-0 w-full md:w-auto justify-between md:justify-end border-t md:border-t-0 border-slate-800 pt-3 md:pt-0">
                     <div className="text-right">
-                      <div className="text-lg font-black text-amber-400">₹{priceInRs}</div>
+                      <div className="text-xl font-black text-amber-400">₹{priceInRs}</div>
                       <div className="text-xs text-slate-500 line-through">MRP: ₹{mrpInRs}</div>
                     </div>
 
@@ -646,10 +934,10 @@ export default function AdminPage() {
                   <input
                     type="text"
                     required
-                    placeholder="e.g. UPSC EPFO APFC Mock Test Series"
+                    placeholder="e.g. UPSC EPFO Special Subjects"
                     value={newProductData.title}
                     onChange={(e) => setNewProductData({ ...newProductData, title: e.target.value })}
-                    className="w-full p-2.5 text-xs rounded-xl border border-slate-700 bg-slate-950 text-white"
+                    className="w-full p-2.5 text-xs rounded-xl border border-slate-700 bg-slate-950 text-white focus:ring-2 focus:ring-amber-500 focus:outline-none"
                   />
                 </div>
                 <div>
@@ -661,7 +949,7 @@ export default function AdminPage() {
                     placeholder="e.g. Complete Study Notes & Practice"
                     value={newProductData.subtitle}
                     onChange={(e) => setNewProductData({ ...newProductData, subtitle: e.target.value })}
-                    className="w-full p-2.5 text-xs rounded-xl border border-slate-700 bg-slate-950 text-white"
+                    className="w-full p-2.5 text-xs rounded-xl border border-slate-700 bg-slate-950 text-white focus:ring-2 focus:ring-amber-500 focus:outline-none"
                   />
                 </div>
               </div>
@@ -677,7 +965,7 @@ export default function AdminPage() {
                     placeholder="e.g. upsc-epfo-mock-tests"
                     value={newProductData.slug}
                     onChange={(e) => setNewProductData({ ...newProductData, slug: e.target.value })}
-                    className="w-full p-2.5 text-xs rounded-xl border border-slate-700 bg-slate-950 text-white"
+                    className="w-full p-2.5 text-xs rounded-xl border border-slate-700 bg-slate-950 text-white focus:ring-2 focus:ring-amber-500 focus:outline-none"
                   />
                 </div>
                 <div>
@@ -689,7 +977,7 @@ export default function AdminPage() {
                     required
                     value={newProductData.priceInRs}
                     onChange={(e) => setNewProductData({ ...newProductData, priceInRs: Number(e.target.value) })}
-                    className="w-full p-2.5 text-xs rounded-xl border border-slate-700 bg-slate-950 text-white font-bold text-amber-400"
+                    className="w-full p-2.5 text-xs rounded-xl border border-slate-700 bg-slate-950 text-white font-bold text-amber-400 focus:ring-2 focus:ring-amber-500 focus:outline-none"
                   />
                 </div>
                 <div>
@@ -701,7 +989,7 @@ export default function AdminPage() {
                     required
                     value={newProductData.mrpInRs}
                     onChange={(e) => setNewProductData({ ...newProductData, mrpInRs: Number(e.target.value) })}
-                    className="w-full p-2.5 text-xs rounded-xl border border-slate-700 bg-slate-950 text-white"
+                    className="w-full p-2.5 text-xs rounded-xl border border-slate-700 bg-slate-950 text-white focus:ring-2 focus:ring-amber-500 focus:outline-none"
                   />
                 </div>
               </div>
@@ -715,7 +1003,7 @@ export default function AdminPage() {
                     type="text"
                     value={newProductData.language}
                     onChange={(e) => setNewProductData({ ...newProductData, language: e.target.value })}
-                    className="w-full p-2.5 text-xs rounded-xl border border-slate-700 bg-slate-950 text-white"
+                    className="w-full p-2.5 text-xs rounded-xl border border-slate-700 bg-slate-950 text-white focus:ring-2 focus:ring-amber-500 focus:outline-none"
                   />
                 </div>
                 <div>
@@ -726,7 +1014,7 @@ export default function AdminPage() {
                     type="text"
                     value={newProductData.edition}
                     onChange={(e) => setNewProductData({ ...newProductData, edition: e.target.value })}
-                    className="w-full p-2.5 text-xs rounded-xl border border-slate-700 bg-slate-950 text-white"
+                    className="w-full p-2.5 text-xs rounded-xl border border-slate-700 bg-slate-950 text-white focus:ring-2 focus:ring-amber-500 focus:outline-none"
                   />
                 </div>
                 <div>
@@ -737,7 +1025,7 @@ export default function AdminPage() {
                     type="text"
                     value={newProductData.pageCount}
                     onChange={(e) => setNewProductData({ ...newProductData, pageCount: e.target.value })}
-                    className="w-full p-2.5 text-xs rounded-xl border border-slate-700 bg-slate-950 text-white"
+                    className="w-full p-2.5 text-xs rounded-xl border border-slate-700 bg-slate-950 text-white focus:ring-2 focus:ring-amber-500 focus:outline-none"
                   />
                 </div>
               </div>
@@ -752,32 +1040,97 @@ export default function AdminPage() {
                   placeholder="Summary of what the ebook covers..."
                   value={newProductData.shortDescription}
                   onChange={(e) => setNewProductData({ ...newProductData, shortDescription: e.target.value })}
-                  className="w-full p-2.5 text-xs rounded-xl border border-slate-700 bg-slate-950 text-white"
+                  className="w-full p-2.5 text-xs rounded-xl border border-slate-700 bg-slate-950 text-white focus:ring-2 focus:ring-amber-500 focus:outline-none"
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    Cover Image URL / Path
-                  </label>
-                  <input
-                    type="text"
-                    value={newProductData.coverImage}
-                    onChange={(e) => setNewProductData({ ...newProductData, coverImage: e.target.value })}
-                    className="w-full p-2.5 text-xs rounded-xl border border-slate-700 bg-slate-950 text-white font-mono"
-                  />
+              {/* Local File Upload Section for Add Ebook Modal */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-800">
+                {/* Cover Image Upload from Computer */}
+                <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                      <ImageIcon className="w-3.5 h-3.5 text-amber-400" />
+                      <span>Book Cover Image</span>
+                    </label>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    {newProductData.coverImage && (
+                      <img
+                        src={newProductData.coverImage}
+                        alt="Cover preview"
+                        className="w-12 h-16 object-cover rounded border border-slate-700 shrink-0"
+                      />
+                    )}
+                    <div className="flex-1 space-y-1.5">
+                      <input
+                        type="file"
+                        ref={addCoverInputRef}
+                        accept="image/png,image/jpeg,image/webp"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleFileUpload(file, 'cover', false);
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => addCoverInputRef.current?.click()}
+                        disabled={isUploadingCover}
+                        className="w-full py-2 px-3 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-750 text-slate-200 border border-slate-700 flex items-center justify-center gap-1.5"
+                      >
+                        <UploadCloud className="w-3.5 h-3.5 text-amber-400" />
+                        <span>{isUploadingCover ? 'Uploading Cover...' : 'Choose Image from PC'}</span>
+                      </button>
+                      <input
+                        type="text"
+                        value={newProductData.coverImage}
+                        onChange={(e) => setNewProductData({ ...newProductData, coverImage: e.target.value })}
+                        placeholder="/covers/cover-product-2.png"
+                        className="w-full p-1.5 text-[11px] rounded border border-slate-700 bg-slate-900 text-slate-300 font-mono"
+                      />
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    Secure PDF Filename (in server_storage/ebooks)
-                  </label>
-                  <input
-                    type="text"
-                    value={newProductData.pdfFileName}
-                    onChange={(e) => setNewProductData({ ...newProductData, pdfFileName: e.target.value })}
-                    className="w-full p-2.5 text-xs rounded-xl border border-slate-700 bg-slate-950 text-white font-mono"
-                  />
+
+                {/* PDF Ebook Upload from Computer */}
+                <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                      <FileUp className="w-3.5 h-3.5 text-sky-400" />
+                      <span>Private PDF Ebook File</span>
+                    </label>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <input
+                      type="file"
+                      ref={addPdfInputRef}
+                      accept="application/pdf"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleFileUpload(file, 'pdf', false);
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => addPdfInputRef.current?.click()}
+                      disabled={isUploadingPdf}
+                      className="w-full py-2 px-3 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-750 text-slate-200 border border-slate-700 flex items-center justify-center gap-1.5"
+                    >
+                      <FileUp className="w-3.5 h-3.5 text-sky-400" />
+                      <span>{isUploadingPdf ? 'Uploading PDF...' : 'Choose PDF from PC'}</span>
+                    </button>
+                    <input
+                      type="text"
+                      value={newProductData.pdfFileName}
+                      onChange={(e) => setNewProductData({ ...newProductData, pdfFileName: e.target.value })}
+                      placeholder="EP_GUIDE_ENG.pdf"
+                      className="w-full p-1.5 text-[11px] rounded border border-slate-700 bg-slate-900 text-slate-300 font-mono"
+                    />
+                  </div>
                 </div>
               </div>
 
