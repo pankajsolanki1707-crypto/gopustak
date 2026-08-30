@@ -49,6 +49,7 @@ export async function processOrderFulfillment({
       productTitle: '',
       amountInPaise: 0,
       customerEmail: '',
+      customerName: '',
       error: 'Order not found in database',
     };
   }
