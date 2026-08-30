@@ -61,6 +61,8 @@ export async function POST(req: Request) {
       downloadUrl: fulfillment.downloadUrl,
       productTitle: fulfillment.productTitle,
       amountInPaise: fulfillment.amountInPaise,
+      customerName: fulfillment.customerName,
+      customerEmail: fulfillment.customerEmail,
     });
   } catch (error: any) {
     console.error('Verify Payment API Error:', error);

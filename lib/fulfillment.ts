@@ -18,6 +18,7 @@ export interface FulfillmentResult {
   productTitle: string;
   amountInPaise: number;
   customerEmail: string;
+  customerName: string;
   error?: string;
 }
 
@@ -152,5 +153,6 @@ export async function processOrderFulfillment({
     productTitle: order.productTitle,
     amountInPaise: order.amountInPaise,
     customerEmail: order.customerEmail,
+    customerName: order.customerName,
   };
 }

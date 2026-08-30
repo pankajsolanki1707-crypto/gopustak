@@ -79,7 +79,33 @@ export default function CheckoutModal({ product, isOpen, onClose }: CheckoutModa
       // Handle Free Ebook (₹0) instant fulfillment without Razorpay
       if (data.isFree) {
         onClose();
-        router.push(`/order/success/${data.order.orderRef}?token=${data.order.token}`);
+        const successParams = new URLSearchParams({
+          token: data.order.token || '',
+          name: customerName,
+          email: customerEmail,
+          phone: customerPhone || '',
+          amount: '0',
+          title: product.title,
+          cover: product.coverImage,
+          edition: product.edition,
+          lang: product.language,
+          pages: product.pageCount || '',
+        });
+        if (typeof window !== 'undefined') {
+          sessionStorage.setItem(`gp_order_${data.order.orderRef}`, JSON.stringify({
+            orderRef: data.order.orderRef,
+            customerName,
+            customerEmail,
+            customerPhone,
+            amountInPaise: 0,
+            productTitle: product.title,
+            productCover: product.coverImage,
+            productEdition: product.edition,
+            productLanguage: product.language,
+            productPageCount: product.pageCount || 'PDF Ebook',
+          }));
+        }
+        router.push(`/order/success/${data.order.orderRef}?${successParams.toString()}`);
         return;
       }
 
@@ -126,7 +152,40 @@ export default function CheckoutModal({ product, isOpen, onClose }: CheckoutModa
             if (verifyData.success) {
               onClose();
               const targetRef = verifyData.orderRef || order.orderRef;
-              router.push(`/order/success/${targetRef}?token=${verifyData.token}`);
+              const paidAmountInRs = Math.round((verifyData.amountInPaise || order.amountInPaise) / 100);
+              const finalName = verifyData.customerName || customerName;
+              const finalEmail = verifyData.customerEmail || customerEmail;
+              const finalTitle = verifyData.productTitle || product.title;
+
+              const successParams = new URLSearchParams({
+                token: verifyData.token || '',
+                name: finalName,
+                email: finalEmail,
+                phone: customerPhone || '',
+                amount: String(paidAmountInRs),
+                title: finalTitle,
+                cover: product.coverImage,
+                edition: product.edition,
+                lang: product.language,
+                pages: product.pageCount || '',
+              });
+
+              if (typeof window !== 'undefined') {
+                sessionStorage.setItem(`gp_order_${targetRef}`, JSON.stringify({
+                  orderRef: targetRef,
+                  customerName: finalName,
+                  customerEmail: finalEmail,
+                  customerPhone,
+                  amountInPaise: verifyData.amountInPaise || order.amountInPaise,
+                  productTitle: finalTitle,
+                  productCover: product.coverImage,
+                  productEdition: product.edition,
+                  productLanguage: product.language,
+                  productPageCount: product.pageCount || 'PDF Ebook',
+                }));
+              }
+
+              router.push(`/order/success/${targetRef}?${successParams.toString()}`);
             } else {
               setErrorMsg(verifyData.error || 'Payment signature verification failed.');
               setIsLoading(false);

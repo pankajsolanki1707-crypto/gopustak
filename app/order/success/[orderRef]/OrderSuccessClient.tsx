@@ -36,8 +36,36 @@ interface OrderSuccessClientProps {
   rawToken: string;
 }
 
-export default function OrderSuccessClient({ order, rawToken }: OrderSuccessClientProps) {
+export default function OrderSuccessClient({ order: initialOrder, rawToken }: OrderSuccessClientProps) {
+  const [order, setOrder] = useState(initialOrder);
   const [copied, setCopied] = useState(false);
+
+  // Client-side hydration from sessionStorage if URL or database had fallback
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = sessionStorage.getItem(`gp_order_${initialOrder.orderRef}`);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          setOrder((prev) => ({
+            ...prev,
+            customerName: parsed.customerName || prev.customerName,
+            customerEmail: parsed.customerEmail || prev.customerEmail,
+            customerPhone: parsed.customerPhone || prev.customerPhone,
+            productTitle: parsed.productTitle || prev.productTitle,
+            productCover: parsed.productCover || prev.productCover,
+            productEdition: parsed.productEdition || prev.productEdition,
+            productLanguage: parsed.productLanguage || prev.productLanguage,
+            productPageCount: parsed.productPageCount || prev.productPageCount,
+            amountInPaise: parsed.amountInPaise !== undefined ? parsed.amountInPaise : prev.amountInPaise,
+          }));
+        }
+      } catch (err) {
+        // Ignore JSON error
+      }
+    }
+  }, [initialOrder.orderRef]);
+
   const downloadUrl = `/api/download?token=${rawToken}`;
   const amountInRs = Math.round(order.amountInPaise / 100);
 
