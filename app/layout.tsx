@@ -2,6 +2,7 @@ import './globals.css';
 import type { Metadata } from 'next';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
+import TelegramFloatingButton from '@/components/TelegramFloatingButton';
 import Script from 'next/script';
 
 export const metadata: Metadata = {
@@ -39,8 +40,6 @@ export const metadata: Metadata = {
   },
 };
 
-import TelegramFloatingButton from '@/components/TelegramFloatingButton';
-
 export default function RootLayout({
   children,
 }: {
@@ -49,6 +48,21 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
+        {/* Google tag (gtag.js) */}
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=G-G8HLNBM7XE"
+          strategy="afterInteractive"
+        />
+        <Script id="google-analytics" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+
+            gtag('config', 'G-G8HLNBM7XE');
+          `}
+        </Script>
+
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
