@@ -1,6 +1,5 @@
 import React from 'react';
 import { prisma } from '@/lib/db';
-import Hero from '@/components/Hero';
 import { ProductItem } from '@/components/ThreeBooksSection';
 import LandingClientWrapper from '@/components/LandingClientWrapper';
 
@@ -25,7 +24,5 @@ export default async function HomePage() {
     console.error('Error loading products from DB:', error);
   }
 
-  return (
-    <LandingClientWrapper products={products} heroChild={<Hero products={products} />} />
-  );
+  return <LandingClientWrapper products={products} />;
 }

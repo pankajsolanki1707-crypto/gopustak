@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import Hero from './Hero';
 import ThreeBooksSection, { ProductItem } from './ThreeBooksSection';
 import WhyGoPustak from './WhyGoPustak';
 import SamplePagesGallery from './SamplePagesGallery';
@@ -12,17 +13,39 @@ import SampleModal from './SampleModal';
 
 interface LandingClientWrapperProps {
   products: ProductItem[];
-  heroChild: React.ReactNode;
+  heroChild?: React.ReactNode;
 }
 
 export default function LandingClientWrapper({
-  products,
-  heroChild,
+  products: initialProducts,
 }: LandingClientWrapperProps) {
+  const [currentProducts, setCurrentProducts] = useState<ProductItem[]>(initialProducts || []);
   const [selectedBuyProduct, setSelectedBuyProduct] = useState<ProductItem | null>(null);
   const [selectedSampleProduct, setSelectedSampleProduct] = useState<ProductItem | null>(null);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [isSampleOpen, setIsSampleOpen] = useState(false);
+
+  // Live real-time fetch to guarantee immediate update when prices/details change in Admin
+  const refreshProducts = async () => {
+    try {
+      const res = await fetch('/api/products', { cache: 'no-store' });
+      const data = await res.json();
+      if (data.success && Array.isArray(data.products) && data.products.length > 0) {
+        setCurrentProducts(data.products);
+      }
+    } catch (err) {
+      console.warn('Live product sync warning:', err);
+    }
+  };
+
+  useEffect(() => {
+    refreshProducts();
+
+    // Also refresh on window focus
+    const handleFocus = () => refreshProducts();
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, []);
 
   const handleBuyNow = (product: ProductItem) => {
     setSelectedBuyProduct(product);
@@ -36,12 +59,12 @@ export default function LandingClientWrapper({
 
   return (
     <>
-      {/* 1. Hero Section */}
-      {heroChild}
+      {/* 1. Hero Section with Live Dynamic Prices */}
+      <Hero products={currentProducts} />
 
       {/* 2. Exactly 3 Ebooks Grid */}
       <ThreeBooksSection
-        products={products}
+        products={currentProducts}
         onBuyNow={handleBuyNow}
         onViewSample={handleViewSample}
       />
@@ -51,7 +74,7 @@ export default function LandingClientWrapper({
 
       {/* 4. Real PDF Sample Pages Gallery */}
       <SamplePagesGallery
-        products={products}
+        products={currentProducts}
         onViewSample={handleViewSample}
       />
 
