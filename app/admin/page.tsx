@@ -17,6 +17,7 @@ import {
   ArrowLeft,
   Lock,
   LogOut,
+  Check,
 } from 'lucide-react';
 import { ProductItem } from '@/components/ThreeBooksSection';
 
@@ -34,6 +35,7 @@ export default function AdminPage() {
   const [editProductId, setEditProductId] = useState<string | null>(null);
   const [editFormData, setEditFormData] = useState<any>({});
   const [saveStatus, setSaveStatus] = useState<string>('');
+  const [isSaving, setIsSaving] = useState(false);
 
   // Check saved session on mount
   useEffect(() => {
@@ -73,7 +75,6 @@ export default function AdminPage() {
         }
         loadData();
       } else {
-        // Direct fallback check
         const isDirectMatch =
           (cleanEmail === 'gopustak@outlook.com' || cleanEmail === 'admin') &&
           (cleanPassword.toLowerCase() === 'pan@#17sol');
@@ -89,7 +90,6 @@ export default function AdminPage() {
         }
       }
     } catch (err: any) {
-      // Offline / Direct verification
       const isDirectMatch =
         (cleanEmail === 'gopustak@outlook.com' || cleanEmail === 'admin') &&
         (cleanPassword.toLowerCase() === 'pan@#17sol');
@@ -123,68 +123,9 @@ export default function AdminPage() {
       if (data.success && Array.isArray(data.products) && data.products.length > 0) {
         setProducts(data.products);
         setOrders(data.orders || []);
-      } else {
-        // Fallback default 3 products if DB is empty
-        setProducts([
-          {
-            id: 'prod-1',
-            slug: 'upsc-epfo-apfc-2026-special-subjects-mock-tests-hindi',
-            title: 'UPSC EPFO/APFC 2026 – विशेष विषय एवं 10 मॉक टेस्ट',
-            subtitle: 'Complete Hindi Preparation Resource',
-            shortDescription: 'Comprehensive Hindi study guide for GAAP, Auditing, Insurance, Labour Laws and 10 full mock tests.',
-            longDescription: 'Comprehensive Hindi study guide.',
-            coverImage: '/covers/cover-product-1.png',
-            priceInPaise: 9900,
-            mrpInPaise: 29900,
-            category: 'UPSC EPFO / APFC',
-            language: 'Hindi Medium',
-            edition: '2026 Edition',
-            pageCount: '380+ Pages',
-            published: true,
-            highlights: ['Complete Hindi Coverage', '10 Mock Tests'],
-            samplePages: ['/samples/sample-1-p1.png'],
-          },
-          {
-            id: 'prod-2',
-            slug: 'crack-upsc-epfo-apfc-2026-blueprint',
-            title: 'Crack UPSC EPFO/APFC 2026',
-            subtitle: 'A Complete Preparation Blueprint',
-            shortDescription: 'Strategic roadmap, study schedules, resource list, and high-yield scoring tactics.',
-            longDescription: 'Strategic roadmap and blueprint.',
-            coverImage: '/covers/cover-product-2.png',
-            priceInPaise: 14900,
-            mrpInPaise: 29900,
-            category: 'UPSC EPFO / APFC',
-            language: 'English',
-            edition: '2026 Edition',
-            pageCount: '220+ Pages',
-            published: true,
-            highlights: ['12/9/6 Month Plans', 'Resource Roadmap'],
-            samplePages: ['/samples/sample-2-p1.png'],
-          },
-          {
-            id: 'prod-3',
-            slug: 'upsc-epfo-apfc-practice-ebook-full-mock-tests',
-            title: 'UPSC EPFO/APFC 2026 Special Subject Notes + 10 Full-Length Mock Tests | Complete Study Guide for First Attempt',
-            subtitle: '10 Full Mocks with Detailed Explanations',
-            shortDescription: 'Master accounting principles, auditing, industrial relations, labour laws, and 10 full mocks.',
-            longDescription: 'English comprehensive notes and mocks.',
-            coverImage: '/covers/cover-product-3.png',
-            priceInPaise: 9900,
-            mrpInPaise: 29900,
-            category: 'UPSC EPFO / APFC',
-            language: 'English',
-            edition: '2026 Edition',
-            pageCount: '410+ Pages',
-            published: true,
-            highlights: ['GAAP & Labour Laws', '10 Full Mocks'],
-            samplePages: ['/samples/sample-3-p1.png'],
-          },
-        ]);
-        setOrders(data.orders || []);
       }
     } catch (err) {
-      console.error(err);
+      console.error('Error loading admin products:', err);
     } finally {
       setLoading(false);
     }
@@ -194,6 +135,7 @@ export default function AdminPage() {
     setEditProductId(product.id);
     setEditFormData({
       id: product.id,
+      slug: product.slug,
       title: product.title,
       subtitle: product.subtitle || '',
       shortDescription: product.shortDescription,
@@ -206,33 +148,45 @@ export default function AdminPage() {
   };
 
   const handleSave = async () => {
-    setSaveStatus('Saving changes...');
+    setIsSaving(true);
+    setSaveStatus('Saving changes to database...');
+
     try {
       const res = await fetch('/api/admin/products', {
-        method: 'PUT',
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           id: editFormData.id,
+          slug: editFormData.slug,
           title: editFormData.title,
           subtitle: editFormData.subtitle,
           shortDescription: editFormData.shortDescription,
           longDescription: editFormData.longDescription,
-          priceInPaise: Number(editFormData.priceInRs) * 100,
-          mrpInPaise: Number(editFormData.mrpInRs) * 100,
+          priceInPaise: Math.round(Number(editFormData.priceInRs) * 100),
+          mrpInPaise: Math.round(Number(editFormData.mrpInRs) * 100),
           published: Boolean(editFormData.published),
         }),
       });
 
-      const data = await res.json();
+      const text = await res.text();
+      let data: any = {};
+      try {
+        data = JSON.parse(text);
+      } catch (parseErr) {
+        throw new Error(`Server returned unexpected response: ${text.slice(0, 100)}`);
+      }
+
       if (data.success) {
-        setSaveStatus('Changes saved successfully!');
+        setSaveStatus(`✓ Saved successfully! Price updated to ₹${editFormData.priceInRs} (MRP: ₹${editFormData.mrpInRs})`);
         setEditProductId(null);
-        loadData();
+        await loadData();
       } else {
-        setSaveStatus(`Error: ${data.error}`);
+        setSaveStatus(`Error saving: ${data.error || 'Unknown error'}`);
       }
     } catch (err: any) {
       setSaveStatus(`Save failed: ${err.message}`);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -349,7 +303,7 @@ export default function AdminPage() {
         </div>
 
         {saveStatus && (
-          <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-sm font-medium">
+          <div className={`p-4 rounded-xl border text-sm font-medium ${saveStatus.includes('✓') ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300' : 'bg-amber-500/10 border-amber-500/30 text-amber-300'}`}>
             {saveStatus}
           </div>
         )}
@@ -378,19 +332,21 @@ export default function AdminPage() {
                 return (
                   <div key={product.id} className="p-6 rounded-2xl bg-slate-950 border-2 border-amber-500/50 space-y-4 shadow-inner">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-amber-400 uppercase">
-                        Editing: {product.slug}
+                      <span className="text-xs font-bold text-amber-400 uppercase tracking-wide">
+                        Editing: {product.title}
                       </span>
                       <div className="flex items-center gap-2">
                         <button
                           onClick={handleSave}
-                          className="inline-flex items-center gap-1 px-4 py-1.5 rounded-lg text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 shadow"
+                          disabled={isSaving}
+                          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-md transition-all active:scale-95 disabled:opacity-70"
                         >
-                          <Save className="w-3.5 h-3.5" /> Save Changes
+                          <Save className="w-3.5 h-3.5" />
+                          {isSaving ? 'Saving...' : 'Save Changes'}
                         </button>
                         <button
                           onClick={() => setEditProductId(null)}
-                          className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700"
+                          className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700"
                         >
                           Cancel
                         </button>
@@ -431,7 +387,7 @@ export default function AdminPage() {
                           type="number"
                           value={editFormData.priceInRs}
                           onChange={(e) => setEditFormData({ ...editFormData, priceInRs: e.target.value })}
-                          className="w-full p-2.5 text-xs rounded-lg border border-slate-700 bg-slate-900 text-white"
+                          className="w-full p-2.5 text-xs rounded-lg border border-slate-700 bg-slate-900 text-white font-bold text-amber-400"
                         />
                       </div>
                       <div>
