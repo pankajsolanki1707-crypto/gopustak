@@ -4,6 +4,9 @@ import { prisma } from '@/lib/db';
 import BookDetailClient from '@/components/BookDetailClient';
 import type { Metadata } from 'next';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 interface Props {
   params: {
     slug: string;
@@ -41,8 +44,8 @@ export default async function BookDetailPage({ params }: Props) {
 
   const product = {
     ...dbProduct,
-    highlights: JSON.parse(dbProduct.highlights || '[]'),
-    samplePages: JSON.parse(dbProduct.samplePages || '[]'),
+    highlights: typeof dbProduct.highlights === 'string' ? JSON.parse(dbProduct.highlights || '[]') : dbProduct.highlights,
+    samplePages: typeof dbProduct.samplePages === 'string' ? JSON.parse(dbProduct.samplePages || '[]') : dbProduct.samplePages,
   };
 
   return <BookDetailClient product={product} />;

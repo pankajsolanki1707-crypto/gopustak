@@ -3,9 +3,31 @@
 import React from 'react';
 import Link from 'next/link';
 import { ShieldCheck, Zap, FileText, ArrowRight, Sparkles, Star, CheckCircle } from 'lucide-react';
-import BookMockup3D from './BookMockup3D';
+import { ProductItem } from './ThreeBooksSection';
 
-export default function Hero() {
+interface HeroProps {
+  products?: ProductItem[];
+}
+
+export default function Hero({ products = [] }: HeroProps) {
+  // Find each product dynamically from live database
+  const prod1 =
+    products.find((p) => p.slug === 'upsc-epfo-apfc-2026-special-subjects-mock-tests-hindi') ||
+    products[0] ||
+    null;
+  const prod2 =
+    products.find((p) => p.slug === 'crack-upsc-epfo-apfc-2026-blueprint') ||
+    products[1] ||
+    null;
+  const prod3 =
+    products.find((p) => p.slug === 'upsc-epfo-apfc-practice-ebook-full-mock-tests') ||
+    products[2] ||
+    null;
+
+  const price1 = prod1 ? Math.round(prod1.priceInPaise / 100) : 99;
+  const price2 = prod2 ? Math.round(prod2.priceInPaise / 100) : 149;
+  const price3 = prod3 ? Math.round(prod3.priceInPaise / 100) : 99;
+
   return (
     <section className="relative overflow-hidden bg-gradient-to-b from-slate-950 via-[#0B1329] to-slate-950 text-white pt-10 pb-20 lg:pt-14 lg:pb-24 border-b border-slate-800/80">
       
@@ -27,7 +49,7 @@ export default function Hero() {
               <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
               <span>UPSC EPFO / APFC 2026</span>
               <span className="text-amber-500/60">•</span>
-              <span className="text-emerald-400 font-extrabold">Welcome Offer Active</span>
+              <span className="text-emerald-400 font-extrabold">Special Offer Active</span>
             </div>
 
             {/* Main Headline */}
@@ -55,7 +77,7 @@ export default function Hero() {
                 href="#three-books"
                 className="w-full sm:w-auto inline-flex items-center justify-center px-7 py-3.5 rounded-xl text-sm sm:text-base font-extrabold bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 hover:from-amber-400 hover:to-amber-300 text-slate-950 shadow-xl shadow-amber-500/25 transition-all transform active:scale-95 whitespace-nowrap group"
               >
-                <span>EXPLORE ALL 3 EBOOKS</span>
+                <span>EXPLORE ALL EBOOKS</span>
                 <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
               </a>
 
@@ -87,7 +109,7 @@ export default function Hero() {
 
           </div>
 
-          {/* Right Column: 3 CLEARLY VISIBLE 3D EBOOK COVERS SHOWCASE */}
+          {/* Right Column: DYNAMICALLY PRICED 3D EBOOK COVERS SHOWCASE */}
           <div className="lg:col-span-6 flex flex-col items-center justify-center py-4 lg:py-6">
             
             {/* 3D Showcase Arena */}
@@ -98,23 +120,23 @@ export default function Hero() {
 
               {/* BOOK 1 (Left): Special Subjects (Hindi) */}
               <div className="relative z-10 -mr-4 sm:-mr-6 transform -rotate-3 hover:rotate-0 hover:z-30 transition-all duration-300 group">
-                <Link href="/book/upsc-epfo-apfc-2026-special-subjects-mock-tests-hindi" className="block">
+                <Link href={`/book/${prod1?.slug || 'upsc-epfo-apfc-2026-special-subjects-mock-tests-hindi'}`} className="block">
                   <div className="scale-[0.88] sm:scale-95 group-hover:scale-100 transition-transform">
                     <div className="relative shadow-2xl rounded-lg overflow-hidden border border-slate-700/80 ring-1 ring-white/10 group-hover:ring-amber-400/50 transition-all">
                       <img
-                        src="/covers/cover-product-1.png"
-                        alt="UPSC EPFO/APFC 2026 Special Subjects (Hindi)"
+                        src={prod1?.coverImage || '/covers/cover-product-1.png'}
+                        alt={prod1?.title || 'Special Subjects'}
                         className="w-[145px] sm:w-[170px] h-[210px] sm:h-[245px] object-cover"
                       />
-                      {/* Price Tag Pill */}
+                      {/* Dynamic Price Tag */}
                       <div className="absolute top-2 left-2 bg-slate-950/90 text-amber-300 font-extrabold text-[10px] px-2 py-0.5 rounded shadow border border-amber-500/30">
-                        ₹99
+                        ₹{price1}
                       </div>
                     </div>
                     {/* Bottom Label Badge */}
                     <div className="mt-2.5 text-center">
                       <span className="inline-block text-[9.5px] font-bold tracking-wider uppercase bg-slate-900/95 text-amber-300 border border-slate-700 px-2.5 py-1 rounded-md shadow-md">
-                        02 • SPECIAL NOTES
+                        {prod1?.edition || '02 • SPECIAL NOTES'}
                       </span>
                     </div>
                   </div>
@@ -123,7 +145,7 @@ export default function Hero() {
 
               {/* BOOK 2 (Center): Complete Preparation Blueprint (Prominent & Elevated) */}
               <div className="relative z-20 -translate-y-4 transform hover:scale-105 hover:z-30 transition-all duration-300 group">
-                <Link href="/book/crack-upsc-epfo-apfc-2026-blueprint" className="block">
+                <Link href={`/book/${prod2?.slug || 'crack-upsc-epfo-apfc-2026-blueprint'}`} className="block">
                   <div className="scale-100 sm:scale-105 group-hover:scale-110 transition-transform">
                     {/* Featured Ribbon */}
                     <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-30 bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 text-[9.5px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-lg border border-amber-300">
@@ -132,13 +154,13 @@ export default function Hero() {
 
                     <div className="relative shadow-[0_20px_50px_rgba(0,0,0,0.8)] rounded-lg overflow-hidden border-2 border-amber-400/60 ring-2 ring-amber-500/20 group-hover:border-amber-300 transition-all">
                       <img
-                        src="/covers/cover-product-2.png"
-                        alt="Crack UPSC EPFO/APFC 2026 Blueprint"
+                        src={prod2?.coverImage || '/covers/cover-product-2.png'}
+                        alt={prod2?.title || 'Prep Blueprint'}
                         className="w-[165px] sm:w-[195px] h-[235px] sm:h-[280px] object-cover"
                       />
-                      {/* Price Tag Pill */}
+                      {/* Dynamic Price Tag */}
                       <div className="absolute top-2 left-2 bg-amber-500 text-slate-950 font-black text-[11px] px-2 py-0.5 rounded shadow-md">
-                        ₹149
+                        ₹{price2}
                       </div>
                     </div>
 
@@ -154,23 +176,23 @@ export default function Hero() {
 
               {/* BOOK 3 (Right): Special Subject Notes + 10 Mock Tests */}
               <div className="relative z-10 -ml-4 sm:-ml-6 transform rotate-3 hover:rotate-0 hover:z-30 transition-all duration-300 group">
-                <Link href="/book/upsc-epfo-apfc-practice-ebook-full-mock-tests" className="block">
+                <Link href={`/book/${prod3?.slug || 'upsc-epfo-apfc-practice-ebook-full-mock-tests'}`} className="block">
                   <div className="scale-[0.88] sm:scale-95 group-hover:scale-100 transition-transform">
                     <div className="relative shadow-2xl rounded-lg overflow-hidden border border-slate-700/80 ring-1 ring-white/10 group-hover:ring-amber-400/50 transition-all">
                       <img
-                        src="/covers/cover-product-3.png"
-                        alt="UPSC EPFO/APFC 2026 Special Notes + 10 Mock Tests"
+                        src={prod3?.coverImage || '/covers/cover-product-3.png'}
+                        alt={prod3?.title || '10 Mock Tests'}
                         className="w-[145px] sm:w-[170px] h-[210px] sm:h-[245px] object-cover"
                       />
-                      {/* Price Tag Pill */}
+                      {/* Dynamic Price Tag */}
                       <div className="absolute top-2 right-2 bg-slate-950/90 text-amber-300 font-extrabold text-[10px] px-2 py-0.5 rounded shadow border border-amber-500/30">
-                        ₹99
+                        ₹{price3}
                       </div>
                     </div>
                     {/* Bottom Label Badge */}
                     <div className="mt-2.5 text-center">
                       <span className="inline-block text-[9.5px] font-bold tracking-wider uppercase bg-slate-900/95 text-amber-300 border border-slate-700 px-2.5 py-1 rounded-md shadow-md">
-                        03 • 10 MOCK TESTS
+                        {prod3?.edition || '03 • 10 MOCK TESTS'}
                       </span>
                     </div>
                   </div>
