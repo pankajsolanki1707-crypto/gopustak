@@ -96,34 +96,10 @@ export default function AdminPage() {
         }
         loadData();
       } else {
-        const isDirectMatch =
-          (cleanEmail === 'gopustak@outlook.com' || cleanEmail === 'admin') &&
-          (cleanPassword.toLowerCase() === 'pan@#17sol');
-
-        if (isDirectMatch) {
-          setIsAuthenticated(true);
-          if (typeof window !== 'undefined') {
-            sessionStorage.setItem('gopustak_admin_auth', 'true');
-          }
-          loadData();
-        } else {
-          setAuthError(data.error || 'Invalid credentials. Please verify your email and password.');
-        }
+        setAuthError(data.error || 'Invalid credentials. Please verify your email and password.');
       }
     } catch (err: any) {
-      const isDirectMatch =
-        (cleanEmail === 'gopustak@outlook.com' || cleanEmail === 'admin') &&
-        (cleanPassword.toLowerCase() === 'pan@#17sol');
-
-      if (isDirectMatch) {
-        setIsAuthenticated(true);
-        if (typeof window !== 'undefined') {
-          sessionStorage.setItem('gopustak_admin_auth', 'true');
-        }
-        loadData();
-      } else {
-        setAuthError('Connection error. Please try again.');
-      }
+      setAuthError('Connection error. Please verify network and try again.');
     } finally {
       setIsLoggingIn(false);
     }
@@ -312,14 +288,14 @@ export default function AdminPage() {
             )}
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1">
-                Admin Email
+                Admin Email / Username
               </label>
               <input
                 type="text"
                 required
                 value={emailInput}
                 onChange={(e) => setEmailInput(e.target.value)}
-                placeholder="gopustak@outlook.com"
+                placeholder="Enter email or username"
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-700 bg-slate-950 text-white text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none placeholder-slate-600"
               />
             </div>
