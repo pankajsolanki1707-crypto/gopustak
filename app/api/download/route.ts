@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
 import { prisma } from '@/lib/db';
-import { hashToken } from '@/lib/secure-token';
+import { hashToken, verifySignedOrderToken } from '@/lib/secure-token';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,7 +25,10 @@ export async function GET(req: Request) {
       );
     }
 
-    // 2. Hash incoming raw token to look up database record
+    // 2. Decode Signed Order Token (Stateless Verification)
+    const tokenPayload = verifySignedOrderToken(rawToken);
+
+    // 3. Hash incoming raw token to look up database record if present
     const tokenHash = hashToken(rawToken);
 
     let tokenRecord = null;
@@ -39,9 +42,8 @@ export async function GET(req: Request) {
       console.warn('[Download DB Lookup Warning]:', dbErr);
     }
 
-    // 3. Verify Token Record & Expiration
+    // 4. Verify Token Record & Expiration
     if (tokenRecord) {
-      // Check expiration
       if (new Date() > new Date(tokenRecord.expiresAt)) {
         return NextResponse.json(
           { success: false, error: 'Download access link has expired (24-hour validity limit). Please check your email or contact support.' },
@@ -49,18 +51,23 @@ export async function GET(req: Request) {
         );
       }
 
-      // Check Rate Limit / Max Downloads per purchase
       if (tokenRecord.downloadCount >= tokenRecord.maxDownloads) {
         return NextResponse.json(
           { success: false, error: `Download rate limit reached (${tokenRecord.maxDownloads} downloads max). Please contact support for renewal.` },
           { status: 429 }
         );
       }
+    } else if (!tokenPayload) {
+      // Neither DB record nor signed token valid
+      return NextResponse.json(
+        { success: false, error: 'Invalid or expired download access token.' },
+        { status: 401 }
+      );
     }
 
-    // 4. Verify Purchase Entitlement & Order Status
-    let targetProductId = tokenRecord?.productId || '';
-    let downloadSlug = 'upsc-epfo-apfc-ebook';
+    // 5. Verify Purchase Entitlement & Order Status
+    let targetProductId = tokenRecord?.productId || tokenPayload?.productId || '';
+    let downloadSlug = tokenPayload?.productSlug || 'upsc-epfo-apfc-ebook';
     let pdfFileName = '';
 
     if (tokenRecord) {
@@ -100,7 +107,7 @@ export async function GET(req: Request) {
       }
     }
 
-    // 5. Fallback PDF Matching if cold boot
+    // 6. Match PDF Filename
     if (!pdfFileName) {
       for (const [slug, fileName] of Object.entries(PDF_MAP)) {
         if (targetProductId.includes(slug) || rawToken.includes(slug)) {
@@ -115,7 +122,7 @@ export async function GET(req: Request) {
       }
     }
 
-    // 6. Locate PDF in Private Storage (Never exposed in /public)
+    // 7. Locate PDF in Private Storage (Never exposed in /public)
     const candidatePaths = [
       path.join(process.cwd(), 'server_storage', 'ebooks', pdfFileName),
       path.resolve('./server_storage/ebooks', pdfFileName),
@@ -136,7 +143,7 @@ export async function GET(req: Request) {
       );
     }
 
-    // 7. Increment & Log Download Counter
+    // 8. Increment & Log Download Counter if DB is available
     if (tokenRecord) {
       try {
         await prisma.downloadToken.update({
@@ -154,7 +161,7 @@ export async function GET(req: Request) {
     const fileStat = fs.statSync(filePath);
     const fileBuffer = fs.readFileSync(filePath);
 
-    // 8. Stream Binary Attachment without exposing internal filesystem paths
+    // 9. Stream Binary Attachment without exposing internal filesystem paths
     const cleanDownloadName = `${downloadSlug}.pdf`;
     return new NextResponse(fileBuffer, {
       status: 200,

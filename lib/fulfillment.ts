@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/db';
-import { generateCryptographicToken, hashToken } from '@/lib/secure-token';
+import { createSignedOrderToken, generateCryptographicToken, hashToken } from '@/lib/secure-token';
 import { sendOrderConfirmationEmail } from '@/lib/email';
 
 interface FulfillOrderParams {
@@ -103,8 +103,16 @@ export async function processOrderFulfillment({
     console.warn('[Fulfillment] Entitlement upsert warning:', entitlementErr);
   }
 
-  // 4. Generate Cryptographically Random Raw Token & Hash it for storage
-  const rawToken = generateCryptographicToken();
+  // 4. Generate Cryptographically Signed Raw Token & Hash it for storage
+  const rawToken = createSignedOrderToken({
+    orderRef: order.orderRef,
+    productId: order.productId,
+    productSlug,
+    productTitle: order.productTitle,
+    customerName: order.customerName,
+    customerEmail: order.customerEmail,
+    amountInPaise: order.amountInPaise,
+  });
   const tokenHash = hashToken(rawToken);
   const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours validity
 
@@ -112,7 +120,7 @@ export async function processOrderFulfillment({
     await prisma.downloadToken.create({
       data: {
         tokenHash,
-        rawTokenPreview: rawToken.slice(0, 8) + '...',
+        rawTokenPreview: rawToken.slice(0, 16) + '...',
         orderId: order.id,
         orderRef: order.orderRef,
         customerEmail: order.customerEmail,
