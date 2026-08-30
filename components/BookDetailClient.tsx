@@ -161,7 +161,7 @@ export default function BookDetailClient({
                 <div>
                   <div className="flex items-baseline gap-2.5">
                     <span className="text-3xl font-black text-slate-900">
-                      ₹{priceInRs}
+                      {priceInRs === 0 ? 'FREE' : `₹${priceInRs}`}
                     </span>
                     {mrpInRs > priceInRs && (
                       <span className="text-sm font-semibold text-slate-400 line-through">
@@ -169,20 +169,24 @@ export default function BookDetailClient({
                       </span>
                     )}
                     <span className="text-[10.5px] font-bold text-amber-900 bg-amber-200/90 px-2 py-0.5 rounded uppercase tracking-wider">
-                      Welcome Offer
+                      {priceInRs === 0 ? '100% Free' : 'Welcome Offer'}
                     </span>
                   </div>
                   <p className="text-[11px] text-slate-500 mt-1">
-                    One-time payment • Instant personal PDF download
+                    {priceInRs === 0 ? 'Free personal digital access' : 'One-time payment • Instant personal PDF download'}
                   </p>
                 </div>
 
                 <button
                   onClick={() => handleBuy(product)}
-                  className="px-6 py-3.5 rounded-xl font-extrabold text-xs sm:text-sm bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 hover:from-amber-400 hover:to-amber-300 text-slate-950 shadow-md shadow-amber-500/20 transition-all flex items-center justify-center gap-2 transform active:scale-95 shrink-0"
+                  className={`px-6 py-3.5 rounded-xl font-extrabold text-xs sm:text-sm text-slate-950 shadow-md transition-all flex items-center justify-center gap-2 transform active:scale-95 shrink-0 ${
+                    priceInRs === 0
+                      ? 'bg-emerald-400 hover:bg-emerald-300 shadow-emerald-500/20'
+                      : 'bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 hover:from-amber-400 hover:to-amber-300 shadow-amber-500/20'
+                  }`}
                 >
                   <ShoppingBag className="w-4 h-4" />
-                  BUY NOW & DOWNLOAD
+                  {priceInRs === 0 ? 'GET FREE ACCESS & DOWNLOAD' : 'BUY NOW & DOWNLOAD'}
                 </button>
               </div>
 
@@ -375,14 +379,16 @@ export default function BookDetailClient({
       <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur border-t border-slate-200 p-3 px-4 shadow-lg flex items-center justify-between gap-4">
         <div>
           <span className="text-[10.5px] text-slate-500">Total Price</span>
-          <div className="text-base font-extrabold text-slate-900">₹{priceInRs}</div>
+          <div className="text-base font-extrabold text-slate-900">{priceInRs === 0 ? 'FREE' : `₹${priceInRs}`}</div>
         </div>
         <button
           onClick={() => handleBuy(product)}
-          className="flex-1 py-3 px-4 rounded-xl text-xs sm:text-sm font-extrabold bg-amber-500 text-slate-950 shadow flex items-center justify-center gap-1.5"
+          className={`flex-1 py-3 px-4 rounded-xl text-xs sm:text-sm font-extrabold text-slate-950 shadow flex items-center justify-center gap-1.5 ${
+            priceInRs === 0 ? 'bg-emerald-400' : 'bg-amber-500'
+          }`}
         >
           <ShoppingBag className="w-4 h-4" />
-          BUY NOW & DOWNLOAD
+          {priceInRs === 0 ? 'GET FREE ACCESS' : 'BUY NOW & DOWNLOAD'}
         </button>
       </div>
 

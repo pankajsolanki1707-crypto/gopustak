@@ -127,7 +127,7 @@ export default function Hero({ products = [] }: HeroProps) {
                       />
                       {/* Price Badge */}
                       <div className="absolute top-2 left-2 bg-slate-950/90 text-amber-300 font-extrabold text-[10px] px-2 py-0.5 rounded shadow border border-amber-500/30">
-                        ₹{priceHindi}
+                        {priceHindi === 0 ? 'FREE' : `₹${priceHindi}`}
                       </div>
                     </div>
                     <div className="mt-2 text-center">
@@ -145,13 +145,13 @@ export default function Hero({ products = [] }: HeroProps) {
                   <div className="scale-100 sm:scale-105 group-hover:scale-110 transition-transform">
                     <div className="relative shadow-[0_20px_50px_rgba(0,0,0,0.8)] rounded-lg overflow-hidden border-2 border-amber-400/70 ring-2 ring-amber-500/20 group-hover:border-amber-300 transition-all">
                       <img
-                        src="/covers/cover-product-2.png"
-                        alt="Crack UPSC EPFO/APFC 2026 Blueprint"
+                        src={prodBlueprint?.coverImage || '/covers/cover-product-2.png'}
+                        alt={prodBlueprint?.title || 'Crack UPSC EPFO/APFC 2026 Blueprint'}
                         className="w-[165px] sm:w-[190px] h-[235px] sm:h-[275px] object-cover"
                       />
                       {/* Price Badge */}
                       <div className="absolute top-2 left-2 bg-amber-500 text-slate-950 font-black text-[11px] px-2 py-0.5 rounded shadow-md">
-                        ₹{priceBlueprint}
+                        {priceBlueprint === 0 ? 'FREE' : `₹${priceBlueprint}`}
                       </div>
                     </div>
 
@@ -170,13 +170,13 @@ export default function Hero({ products = [] }: HeroProps) {
                   <div className="scale-[0.88] sm:scale-95 group-hover:scale-100 transition-transform">
                     <div className="relative shadow-2xl rounded-lg overflow-hidden border border-slate-700/80 ring-1 ring-white/10 group-hover:ring-amber-400/50 transition-all">
                       <img
-                        src="/covers/cover-product-3.png"
-                        alt="UPSC EPFO/APFC Practice eBook Full Mock Tests"
+                        src={prodMock?.coverImage || '/covers/cover-product-3.png'}
+                        alt={prodMock?.title || 'Special Subject eBook + 10 Full Mock Tests'}
                         className="w-[145px] sm:w-[165px] h-[210px] sm:h-[240px] object-cover"
                       />
                       {/* Price Badge */}
                       <div className="absolute top-2 right-2 bg-slate-950/90 text-amber-300 font-extrabold text-[10px] px-2 py-0.5 rounded shadow border border-amber-500/30">
-                        ₹{priceMock}
+                        {priceMock === 0 ? 'FREE' : `₹${priceMock}`}
                       </div>
                     </div>
                     <div className="mt-2 text-center">

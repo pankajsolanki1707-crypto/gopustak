@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Check, ShoppingBag, Eye } from 'lucide-react';
+import { Check, ShoppingBag, Eye, Gift } from 'lucide-react';
 import BookMockup3D from './BookMockup3D';
 
 export interface ProductItem {
@@ -58,6 +58,7 @@ export default function ThreeBooksSection({
           {products.map((product) => {
             const priceInRs = Math.round(product.priceInPaise / 100);
             const mrpInRs = Math.round(product.mrpInPaise / 100);
+            const isFree = priceInRs === 0;
             const topHighlights = (product.highlights || []).slice(0, 4);
 
             return (
@@ -157,7 +158,7 @@ export default function ThreeBooksSection({
                     <div className="flex items-baseline justify-between">
                       <div className="flex items-baseline gap-2">
                         <span className="text-2xl font-black text-slate-900">
-                          ₹{priceInRs}
+                          {isFree ? 'FREE' : `₹${priceInRs}`}
                         </span>
                         {mrpInRs > priceInRs && (
                           <span className="text-xs font-medium text-slate-400 line-through">
@@ -166,7 +167,7 @@ export default function ThreeBooksSection({
                         )}
                       </div>
                       <span className="text-[10px] font-bold text-amber-900 bg-amber-200/90 px-2 py-0.5 rounded uppercase tracking-wider">
-                        Welcome Offer
+                        {isFree ? '100% Free' : 'Welcome Offer'}
                       </span>
                     </div>
 
@@ -174,10 +175,14 @@ export default function ThreeBooksSection({
                     <div className="grid grid-cols-2 gap-2.5">
                       <button
                         onClick={() => onBuyNow(product)}
-                        className="w-full inline-flex items-center justify-center py-2.5 px-3 rounded-xl text-xs sm:text-sm font-extrabold bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-md hover:shadow transition-all active:scale-95"
+                        className={`w-full inline-flex items-center justify-center py-2.5 px-3 rounded-xl text-xs sm:text-sm font-extrabold text-slate-950 shadow-md hover:shadow transition-all active:scale-95 ${
+                          isFree
+                            ? 'bg-emerald-400 hover:bg-emerald-300'
+                            : 'bg-amber-500 hover:bg-amber-400'
+                        }`}
                       >
-                        <ShoppingBag className="w-4 h-4 mr-1.5" />
-                        BUY NOW
+                        {isFree ? <Gift className="w-4 h-4 mr-1.5" /> : <ShoppingBag className="w-4 h-4 mr-1.5" />}
+                        {isFree ? 'GET FREE' : 'BUY NOW'}
                       </button>
 
                       <button

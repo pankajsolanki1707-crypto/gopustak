@@ -69,6 +69,16 @@ export async function POST(req: Request) {
 
       const count = await prisma.product.count();
 
+      const parsedPrice =
+        priceInPaise !== undefined && !isNaN(Number(priceInPaise))
+          ? Math.max(0, Number(priceInPaise))
+          : 9900;
+
+      const parsedMrp =
+        mrpInPaise !== undefined && !isNaN(Number(mrpInPaise))
+          ? Math.max(0, Number(mrpInPaise))
+          : 29900;
+
       const newProduct = await prisma.product.create({
         data: {
           title: title.trim(),
@@ -83,8 +93,8 @@ export async function POST(req: Request) {
           pageCount: pageCount?.trim() || 'Verified PDF',
           edition: edition?.trim() || '2026 Edition',
           displayOrder: count + 1,
-          priceInPaise: Number(priceInPaise) || 9900,
-          mrpInPaise: Number(mrpInPaise) || 29900,
+          priceInPaise: parsedPrice,
+          mrpInPaise: parsedMrp,
           category: category?.trim() || 'UPSC EPFO / APFC',
           published: published !== false,
           highlights: JSON.stringify([
@@ -146,8 +156,12 @@ export async function POST(req: Request) {
     const updated = await prisma.product.update({
       where: { id: existing.id },
       data: {
-        ...(priceInPaise !== undefined ? { priceInPaise: Number(priceInPaise) } : {}),
-        ...(mrpInPaise !== undefined ? { mrpInPaise: Number(mrpInPaise) } : {}),
+        ...(priceInPaise !== undefined && !isNaN(Number(priceInPaise))
+          ? { priceInPaise: Math.max(0, Number(priceInPaise)) }
+          : {}),
+        ...(mrpInPaise !== undefined && !isNaN(Number(mrpInPaise))
+          ? { mrpInPaise: Math.max(0, Number(mrpInPaise)) }
+          : {}),
         ...(title ? { title } : {}),
         ...(subtitle !== undefined ? { subtitle } : {}),
         ...(shortDescription ? { shortDescription } : {}),
