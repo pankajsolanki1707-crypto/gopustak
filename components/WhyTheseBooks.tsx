@@ -79,14 +79,14 @@ export default function WhyTheseBooks() {
                 </span>
               </div>
               <h3 className="text-base sm:text-lg font-bold text-white">
-                UPSC EPFO/APFC Practice eBook – Full Mock Tests
+                UPSC EPFO/APFC Special Subject eBook + 10 Full Mock Tests
               </h3>
               <p className="text-xs sm:text-[13px] text-slate-300 leading-relaxed">
-                Test your preparation with MCQs, mock tests and detailed explanations.
+                Practice-focused UPSC EPFO/APFC material with full mock tests, exam-style MCQs, detailed explanations and section-wise practice.
               </p>
             </div>
             <div className="pt-3 border-t border-slate-800 text-[11px] text-emerald-400 font-semibold">
-              120-Q Practice Tests with Verified Solutions
+              120-Q Practice Tests with Verified Solutions (2026 Edition)
             </div>
           </div>
 

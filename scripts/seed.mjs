@@ -79,7 +79,7 @@ const initialProducts = [
   },
   {
     slug: 'upsc-epfo-apfc-practice-ebook-full-mock-tests',
-    title: 'UPSC EPFO/APFC Practice eBook – Full Mock Tests',
+    title: 'UPSC EPFO/APFC Special Subject eBook + 10 Full Mock Tests',
     subtitle: '120 Exam-Style MCQs & Detailed Explanations',
     shortDescription: 'Practice-focused UPSC EPFO/APFC material with full mock tests, exam-style MCQs, detailed explanations and section-wise practice across core subjects.',
     shortDescriptionEn: 'Practice-focused UPSC EPFO/APFC material with full mock tests, exam-style MCQs, detailed explanations and section-wise practice across core subjects.',
@@ -89,8 +89,8 @@ const initialProducts = [
     language: 'English',
     format: 'PDF (Digital Ebook)',
     pageCount: '120 Pages (PDF)',
-    edition: '2025 Edition', // Strictly 2025 Edition as per source content
-    publicationDate: '2025',
+    edition: '2026 Edition',
+    publicationDate: '2026',
     priceInPaise: 9900,  // ₹99 (Welcome Offer)
     mrpInPaise: 29900,  // ₹299
     category: 'UPSC EPFO / APFC',

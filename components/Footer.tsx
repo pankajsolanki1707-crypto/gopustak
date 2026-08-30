@@ -66,7 +66,7 @@ export default function Footer() {
                   href="/book/upsc-epfo-apfc-practice-ebook-full-mock-tests"
                   className="hover:text-amber-400 transition-colors"
                 >
-                  03 • Full Mock Tests (2025 Edition)
+                  03 • Special Subject eBook + 10 Mocks (2026 Edition)
                 </Link>
               </li>
             </ul>
