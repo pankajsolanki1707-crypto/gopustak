@@ -3,17 +3,17 @@
 import React, { useState, useEffect } from 'react';
 import Hero from './Hero';
 import ThreeBooksSection, { ProductItem } from './ThreeBooksSection';
+import TelegramBanner from './TelegramBanner';
 import WhyGoPustak from './WhyGoPustak';
 import SamplePagesGallery from './SamplePagesGallery';
 import WhyTheseBooks from './WhyTheseBooks';
-import TelegramBanner from './TelegramBanner';
 import FAQSection from './FAQSection';
+import FinalCTA from './FinalCTA';
 import CheckoutModal from './CheckoutModal';
 import SampleModal from './SampleModal';
 
 interface LandingClientWrapperProps {
   products: ProductItem[];
-  heroChild?: React.ReactNode;
 }
 
 export default function LandingClientWrapper({
@@ -25,7 +25,7 @@ export default function LandingClientWrapper({
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [isSampleOpen, setIsSampleOpen] = useState(false);
 
-  // Live real-time fetch to guarantee immediate update when prices/details change in Admin
+  // Live real-time sync with database
   const refreshProducts = async () => {
     try {
       const res = await fetch('/api/products', { cache: 'no-store' });
@@ -41,7 +41,6 @@ export default function LandingClientWrapper({
   useEffect(() => {
     refreshProducts();
 
-    // Also refresh on window focus
     const handleFocus = () => refreshProducts();
     window.addEventListener('focus', handleFocus);
     return () => window.removeEventListener('focus', handleFocus);
@@ -59,33 +58,36 @@ export default function LandingClientWrapper({
 
   return (
     <>
-      {/* 1. Hero Section with Live Dynamic Prices */}
+      {/* 1. HERO: Focused Ebooks for UPSC EPFO & APFC Aspirants • 3 Real Covers • CTA */}
       <Hero products={currentProducts} />
 
-      {/* 2. Exactly 3 Ebooks Grid */}
+      {/* 2. THREE BOOKS: Exactly 3 Products */}
       <ThreeBooksSection
         products={currentProducts}
         onBuyNow={handleBuyNow}
         onViewSample={handleViewSample}
       />
 
-      {/* 3. Why GoPustak: 4 Pillars */}
+      {/* 3. TELEGRAM COMMUNITY: Moved right after Three Books */}
+      <TelegramBanner />
+
+      {/* 4. WHY CHOOSE GOPUSTAK: 4 Compact Pillars */}
       <WhyGoPustak />
 
-      {/* 4. Real PDF Sample Pages Gallery */}
+      {/* 5. SEE BEFORE YOU BUY: Real PDF Sample Pages */}
       <SamplePagesGallery
         products={currentProducts}
         onViewSample={handleViewSample}
       />
 
-      {/* 5. Why These 3 Books: Direct Breakdown */}
+      {/* 6. WHY THESE 3 BOOKS: PLAN -> MASTER -> PRACTICE */}
       <WhyTheseBooks />
 
-      {/* 6. Telegram Community Connect Banner */}
-      <TelegramBanner />
-
-      {/* 7. Frequently Asked Questions */}
+      {/* 7. FAQ: 7 Practical Questions & Answers */}
       <FAQSection />
+
+      {/* 8. FINAL CTA: Start Your EPFO/APFC Preparation Today */}
+      <FinalCTA />
 
       {/* Interactive Checkout Modal */}
       <CheckoutModal

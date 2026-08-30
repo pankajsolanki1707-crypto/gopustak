@@ -42,11 +42,25 @@ export default async function BookDetailPage({ params }: Props) {
     notFound();
   }
 
+  const otherDbProducts = await prisma.product.findMany({
+    where: {
+      published: true,
+      slug: { not: params.slug },
+    },
+    orderBy: { displayOrder: 'asc' },
+  });
+
   const product = {
     ...dbProduct,
     highlights: typeof dbProduct.highlights === 'string' ? JSON.parse(dbProduct.highlights || '[]') : dbProduct.highlights,
     samplePages: typeof dbProduct.samplePages === 'string' ? JSON.parse(dbProduct.samplePages || '[]') : dbProduct.samplePages,
   };
 
-  return <BookDetailClient product={product} />;
+  const otherProducts = otherDbProducts.map((p) => ({
+    ...p,
+    highlights: typeof p.highlights === 'string' ? JSON.parse(p.highlights || '[]') : p.highlights,
+    samplePages: typeof p.samplePages === 'string' ? JSON.parse(p.samplePages || '[]') : p.samplePages,
+  }));
+
+  return <BookDetailClient product={product} otherProducts={otherProducts} />;
 }

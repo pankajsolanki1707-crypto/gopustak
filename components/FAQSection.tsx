@@ -6,28 +6,32 @@ import { ChevronDown, HelpCircle } from 'lucide-react';
 export default function FAQSection() {
   const faqs = [
     {
-      q: 'How do I receive the ebook?',
-      a: 'Immediately after completing payment via Razorpay, you will be redirected to the secure Thank You page where you can directly download your PDF ebook with one click. In addition, an access confirmation and order reference are issued for your records.',
+      q: 'How will I receive the ebook?',
+      a: 'After your payment is successfully verified, you will be redirected to a secure download page where you can immediately download your PDF ebook with one click. A secure access link is also sent to your registered email address.',
     },
     {
       q: 'What format is available?',
-      a: 'All ebooks are delivered in standard, high-resolution PDF format. The PDFs are compatible with all PDF reader applications, eBook reading apps, Adobe Acrobat, Apple Books, and web browsers across all operating systems.',
+      a: 'All ebooks are provided in high-resolution, DRM-protected standard PDF format. You can read them on Adobe Acrobat, Apple Books, Google Drive, Kindle apps, and any PDF reader across smartphones, tablets, laptops, and desktops.',
     },
     {
-      q: 'Can I read on mobile?',
-      a: 'Yes, absolutely. The ebooks are fully responsive and optimized for crisp reading on smartphones (Android / iOS), tablets, iPads, Kindle app, laptops, and desktops.',
+      q: 'Can I read the ebook on mobile?',
+      a: 'Yes, completely. The PDF pages are designed with crystal-clear typography and structured layouts optimized for smooth reading on Android, iOS iPhones, iPads, tablets, and computers.',
     },
     {
       q: 'How does payment work?',
-      a: 'We use Razorpay, India’s leading 256-bit encrypted payment gateway. You can securely pay using UPI (Google Pay, PhonePe, Paytm, BHIM), Credit/Debit Cards, Net Banking, and Wallets. Your payment is verified securely on our server before issuing download access.',
+      a: 'Payments are processed directly through Razorpay, India’s leading 256-bit SSL encrypted payment gateway. You can pay via UPI (Google Pay, PhonePe, Paytm, CRED), Credit/Debit Cards, Net Banking, and Wallets. Payment is verified server-side via HMAC-SHA256 before granting download access.',
     },
     {
       q: 'How soon can I download?',
-      a: 'Instantly! There is zero waiting time. As soon as your transaction is verified by the server (within 2–3 seconds), your download button becomes active immediately.',
+      a: 'Instantly. There is zero waiting time. As soon as Razorpay confirms the transaction (within seconds), your download button is activated immediately on the success screen.',
     },
     {
       q: 'What happens after payment?',
-      a: 'You will see a "Payment Successful" confirmation screen displaying your unique Order Reference, amount paid, and an instant "DOWNLOAD EBOOK" button. You can save the PDF directly to your device storage or cloud drive.',
+      a: 'You will see a "Payment Successful" confirmation page with your unique Order Reference (e.g. GP-xxxx), book summary, and an instant "DOWNLOAD EBOOK (PDF)" button. You also receive an email receipt with your secure access token.',
+    },
+    {
+      q: 'What should I do if I face a download problem?',
+      a: 'If your download is interrupted or you accidentally close the browser, you can access your download link from the confirmation email. You can also contact our team directly on WhatsApp (+91 99778 96709) or email (gopustak@outlook.com) with your Order Reference for instant support.',
     },
   ];
 
@@ -38,16 +42,12 @@ export default function FAQSection() {
   };
 
   return (
-    <section id="faq" className="py-20 bg-white border-b border-slate-200">
+    <section id="faq" className="py-16 sm:py-20 bg-white border-b border-slate-200">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Section Header */}
-        <div className="text-center max-w-2xl mx-auto mb-14 space-y-4">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-slate-100 text-slate-800 border border-slate-200">
-            <HelpCircle className="w-3.5 h-3.5 text-amber-600" />
-            Frequently Asked Questions
-          </div>
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
+        <div className="text-center max-w-2xl mx-auto mb-12 sm:mb-14 space-y-3">
+          <h2 className="text-2xl sm:text-3.5xl lg:text-4xl font-extrabold text-slate-900 tracking-tight">
             Got Questions? We Have Answers.
           </h2>
           <p className="text-sm sm:text-base text-slate-600">
@@ -56,7 +56,7 @@ export default function FAQSection() {
         </div>
 
         {/* Accordion */}
-        <div className="space-y-4">
+        <div className="space-y-3.5">
           {faqs.map((faq, idx) => {
             const isOpen = openIdx === idx;
             return (
@@ -66,18 +66,18 @@ export default function FAQSection() {
               >
                 <button
                   onClick={() => toggle(idx)}
-                  className="w-full px-6 py-4.5 text-left flex items-center justify-between gap-4 font-bold text-slate-900 hover:text-amber-700 transition-colors"
+                  className="w-full px-5 py-4 text-left flex items-center justify-between gap-4 font-bold text-slate-900 hover:text-amber-700 transition-colors text-sm sm:text-base"
                 >
-                  <span className="text-base sm:text-lg">{faq.q}</span>
+                  <span>{faq.q}</span>
                   <ChevronDown
-                    className={`w-5 h-5 text-slate-500 shrink-0 transition-transform duration-200 ${
+                    className={`w-4 h-4 text-slate-500 shrink-0 transition-transform duration-200 ${
                       isOpen ? 'transform rotate-180 text-amber-600' : ''
                     }`}
                   />
                 </button>
 
                 {isOpen && (
-                  <div className="px-6 pb-5 pt-1 text-sm text-slate-600 leading-relaxed border-t border-slate-100 bg-white">
+                  <div className="px-5 pb-4 pt-1 text-xs sm:text-sm text-slate-600 leading-relaxed border-t border-slate-100 bg-white">
                     {faq.a}
                   </div>
                 )}
@@ -87,9 +87,9 @@ export default function FAQSection() {
         </div>
 
         {/* Bottom Help Banner */}
-        <div className="mt-12 p-6 rounded-2xl bg-slate-900 text-white flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left border border-slate-800">
+        <div className="mt-10 p-5 sm:p-6 rounded-2xl bg-slate-950 text-white flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left border border-slate-800">
           <div>
-            <h4 className="text-base font-bold text-white">Still have questions before purchasing?</h4>
+            <h4 className="text-sm sm:text-base font-bold text-white">Still have questions before purchasing?</h4>
             <p className="text-xs text-slate-400 mt-0.5">Chat directly with our subject advisory team on WhatsApp or Email.</p>
           </div>
           <div className="flex items-center gap-3">
