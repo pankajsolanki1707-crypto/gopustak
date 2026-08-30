@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   CheckCircle2,
@@ -13,7 +13,6 @@ import {
   User,
   CreditCard,
   FileText,
-  Calendar,
   Globe,
 } from 'lucide-react';
 
@@ -40,34 +39,57 @@ export default function OrderSuccessClient({ order: initialOrder, rawToken }: Or
   const [order, setOrder] = useState(initialOrder);
   const [copied, setCopied] = useState(false);
 
-  // Client-side hydration from sessionStorage if URL or database had fallback
-  React.useEffect(() => {
+  // Client-side hydration from URL params and sessionStorage for 100% reliable purchaser details
+  useEffect(() => {
     if (typeof window !== 'undefined') {
       try {
-        const stored = sessionStorage.getItem(`gp_order_${initialOrder.orderRef}`);
+        const searchParams = new URLSearchParams(window.location.search);
+        const qName = searchParams.get('name');
+        const qEmail = searchParams.get('email');
+        const qPhone = searchParams.get('phone');
+        const qAmount = searchParams.get('amount');
+        const qTitle = searchParams.get('title');
+        const qCover = searchParams.get('cover');
+        const qEdition = searchParams.get('edition');
+        const qLang = searchParams.get('lang');
+        const qPages = searchParams.get('pages');
+
+        const stored =
+          sessionStorage.getItem(`gp_order_${initialOrder.orderRef}`) ||
+          sessionStorage.getItem('gp_last_order');
+        let parsed: any = {};
         if (stored) {
-          const parsed = JSON.parse(stored);
-          setOrder((prev) => ({
-            ...prev,
-            customerName: parsed.customerName || prev.customerName,
-            customerEmail: parsed.customerEmail || prev.customerEmail,
-            customerPhone: parsed.customerPhone || prev.customerPhone,
-            productTitle: parsed.productTitle || prev.productTitle,
-            productCover: parsed.productCover || prev.productCover,
-            productEdition: parsed.productEdition || prev.productEdition,
-            productLanguage: parsed.productLanguage || prev.productLanguage,
-            productPageCount: parsed.productPageCount || prev.productPageCount,
-            amountInPaise: parsed.amountInPaise !== undefined ? parsed.amountInPaise : prev.amountInPaise,
-          }));
+          try {
+            parsed = JSON.parse(stored);
+          } catch (e) {}
         }
+
+        setOrder((prev) => ({
+          ...prev,
+          customerName: qName || parsed.customerName || prev.customerName || 'Aspirant',
+          customerEmail: qEmail || parsed.customerEmail || prev.customerEmail || 'your-email@example.com',
+          customerPhone: qPhone || parsed.customerPhone || prev.customerPhone,
+          productTitle: qTitle || parsed.productTitle || prev.productTitle,
+          productCover: qCover || parsed.productCover || prev.productCover,
+          productEdition: qEdition || parsed.productEdition || prev.productEdition,
+          productLanguage: qLang || parsed.productLanguage || prev.productLanguage,
+          productPageCount: qPages || parsed.productPageCount || prev.productPageCount,
+          amountInPaise:
+            qAmount !== null && !isNaN(Number(qAmount))
+              ? Math.round(Number(qAmount) * 100)
+              : parsed.amountInPaise !== undefined
+              ? parsed.amountInPaise
+              : prev.amountInPaise,
+        }));
       } catch (err) {
-        // Ignore JSON error
+        // Non-blocking
       }
     }
   }, [initialOrder.orderRef]);
 
   const downloadUrl = `/api/download?token=${rawToken}`;
   const amountInRs = Math.round(order.amountInPaise / 100);
+  const isFree = amountInRs === 0;
 
   const copyOrderRef = () => {
     navigator.clipboard.writeText(order.orderRef);
@@ -76,7 +98,7 @@ export default function OrderSuccessClient({ order: initialOrder, rawToken }: Or
   };
 
   const whatsappMessage = encodeURIComponent(
-    `Hi GoPustak Team, I purchased ${order.productTitle} (Order Ref: ${order.orderRef}) for ₹${amountInRs}. Name: ${order.customerName}.`
+    `Hi GoPustak Team, I have an inquiry about my order for ${order.productTitle} (Order Ref: ${order.orderRef}, Amount: ${isFree ? 'FREE' : `₹${amountInRs}`}). Name: ${order.customerName}.`
   );
 
   return (
@@ -98,13 +120,17 @@ export default function OrderSuccessClient({ order: initialOrder, rawToken }: Or
             <div className="space-y-1">
               <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 uppercase tracking-wider mb-1">
                 <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-                Payment Confirmed & Verified
+                {isFree ? 'Free Access Confirmed' : 'Payment Confirmed & Verified'}
               </div>
               <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-                Thank You, {order.customerName || 'Aspirant'}!
+                Thank You, {order.customerName}!
               </h1>
               <p className="text-xs sm:text-sm text-slate-300">
-                Your payment of <strong className="text-amber-400 font-extrabold">₹{amountInRs}</strong> is confirmed. Your instant PDF download access is ready below.
+                {isFree ? (
+                  <>Your free digital access has been granted. Your instant PDF download access is ready below.</>
+                ) : (
+                  <>Your payment of <strong className="text-amber-400 font-extrabold">₹{amountInRs}</strong> is confirmed. Your instant PDF download access is ready below.</>
+                )}
               </p>
             </div>
           </div>
@@ -139,7 +165,7 @@ export default function OrderSuccessClient({ order: initialOrder, rawToken }: Or
                     <FileText className="w-3 h-3 text-emerald-400" /> {order.productPageCount}
                   </span>
                   <span className="flex items-center gap-1 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
-                    <CreditCard className="w-3 h-3 text-amber-400" /> Paid: ₹{amountInRs}
+                    <CreditCard className="w-3 h-3 text-amber-400" /> {isFree ? 'Price: FREE (₹0)' : `Paid: ₹${amountInRs}`}
                   </span>
                 </div>
               </div>
@@ -216,7 +242,7 @@ export default function OrderSuccessClient({ order: initialOrder, rawToken }: Or
               <div>
                 <span className="block text-slate-500 text-[10.5px]">Total Amount Paid</span>
                 <span className="text-amber-400 font-black text-sm mt-0.5 block">
-                  ₹{amountInRs} (Paid via Razorpay)
+                  {isFree ? 'FREE (₹0 - 100% Free Access)' : `₹${amountInRs} (Paid via Razorpay)`}
                 </span>
               </div>
             </div>

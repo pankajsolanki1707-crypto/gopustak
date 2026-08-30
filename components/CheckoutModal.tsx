@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, ShieldCheck, ShoppingBag, Loader2, Lock, CheckCircle2, Gift } from 'lucide-react';
+import { X, ShieldCheck, ShoppingBag, Loader2, Lock, Gift } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { ProductItem } from './ThreeBooksSection';
 
@@ -91,8 +91,9 @@ export default function CheckoutModal({ product, isOpen, onClose }: CheckoutModa
           lang: product.language,
           pages: product.pageCount || '',
         });
+
         if (typeof window !== 'undefined') {
-          sessionStorage.setItem(`gp_order_${data.order.orderRef}`, JSON.stringify({
+          const payload = JSON.stringify({
             orderRef: data.order.orderRef,
             customerName,
             customerEmail,
@@ -103,8 +104,11 @@ export default function CheckoutModal({ product, isOpen, onClose }: CheckoutModa
             productEdition: product.edition,
             productLanguage: product.language,
             productPageCount: product.pageCount || 'PDF Ebook',
-          }));
+          });
+          sessionStorage.setItem(`gp_order_${data.order.orderRef}`, payload);
+          sessionStorage.setItem('gp_last_order', payload);
         }
+
         router.push(`/order/success/${data.order.orderRef}?${successParams.toString()}`);
         return;
       }
@@ -171,7 +175,7 @@ export default function CheckoutModal({ product, isOpen, onClose }: CheckoutModa
               });
 
               if (typeof window !== 'undefined') {
-                sessionStorage.setItem(`gp_order_${targetRef}`, JSON.stringify({
+                const payload = JSON.stringify({
                   orderRef: targetRef,
                   customerName: finalName,
                   customerEmail: finalEmail,
@@ -182,7 +186,9 @@ export default function CheckoutModal({ product, isOpen, onClose }: CheckoutModa
                   productEdition: product.edition,
                   productLanguage: product.language,
                   productPageCount: product.pageCount || 'PDF Ebook',
-                }));
+                });
+                sessionStorage.setItem(`gp_order_${targetRef}`, payload);
+                sessionStorage.setItem('gp_last_order', payload);
               }
 
               router.push(`/order/success/${targetRef}?${successParams.toString()}`);
