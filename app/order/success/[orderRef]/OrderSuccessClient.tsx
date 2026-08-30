@@ -1,17 +1,20 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import {
   CheckCircle2,
   Download,
   ShieldCheck,
   Mail,
-  ArrowRight,
   Sparkles,
-  BookOpen,
-  HelpCircle,
-  FileCheck,
+  Copy,
+  Check,
+  User,
+  CreditCard,
+  FileText,
+  Calendar,
+  Globe,
 } from 'lucide-react';
 
 interface OrderSuccessClientProps {
@@ -21,6 +24,7 @@ interface OrderSuccessClientProps {
     productTitle: string;
     customerName: string;
     customerEmail: string;
+    customerPhone?: string | null;
     amountInPaise: number;
     status: string;
     createdAt: string;
@@ -33,74 +37,92 @@ interface OrderSuccessClientProps {
 }
 
 export default function OrderSuccessClient({ order, rawToken }: OrderSuccessClientProps) {
+  const [copied, setCopied] = useState(false);
   const downloadUrl = `/api/download?token=${rawToken}`;
   const amountInRs = Math.round(order.amountInPaise / 100);
 
+  const copyOrderRef = () => {
+    navigator.clipboard.writeText(order.orderRef);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2500);
+  };
+
+  const whatsappMessage = encodeURIComponent(
+    `Hi GoPustak Team, I purchased ${order.productTitle} (Order Ref: ${order.orderRef}) for ₹${amountInRs}. Name: ${order.customerName}.`
+  );
+
   return (
-    <div className="min-h-screen bg-slate-950 py-12 px-4 sm:px-6 lg:px-8 text-white relative overflow-hidden">
+    <div className="min-h-screen bg-slate-950 py-10 sm:py-14 px-4 sm:px-6 lg:px-8 text-white relative overflow-hidden">
       {/* Background Ambience */}
       <div className="absolute top-0 right-1/4 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-1/4 left-1/4 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
 
-      <div className="max-w-3xl mx-auto space-y-8 relative z-10">
+      <div className="max-w-3xl mx-auto space-y-7 relative z-10">
         
-        {/* Main Success Container */}
-        <div className="bg-slate-900/90 rounded-3xl border border-slate-800 p-6 sm:p-10 shadow-2xl space-y-8 text-center sm:text-left">
+        {/* Main Success Card */}
+        <div className="bg-slate-900/95 rounded-3xl border border-slate-800 p-6 sm:p-10 shadow-2xl space-y-7">
           
-          {/* Header & Celebration */}
-          <div className="flex flex-col sm:flex-row items-center gap-5 border-b border-slate-800/80 pb-6">
+          {/* Header & Celebration with Purchaser Name */}
+          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 border-b border-slate-800 pb-6 text-center sm:text-left">
             <div className="w-16 h-16 rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shrink-0 shadow-lg shadow-emerald-500/20">
               <CheckCircle2 className="w-9 h-9" />
             </div>
-            <div>
-              <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 uppercase tracking-wider mb-1.5">
-                <Sparkles className="w-3 h-3 text-emerald-400" />
-                Payment Confirmed
+            <div className="space-y-1">
+              <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 uppercase tracking-wider mb-1">
+                <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+                Payment Confirmed & Verified
               </div>
-              <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-                Payment Successful!
+              <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+                Thank You, {order.customerName || 'Aspirant'}!
               </h1>
-              <p className="text-xs sm:text-sm text-slate-400 mt-1">
-                Your payment of <strong className="text-amber-400">₹{amountInRs}</strong> was verified and your instant download access is ready.
+              <p className="text-xs sm:text-sm text-slate-300">
+                Your payment of <strong className="text-amber-400 font-extrabold">₹{amountInRs}</strong> is confirmed. Your instant PDF download access is ready below.
               </p>
             </div>
           </div>
 
           {/* Ebook Product Card with Immediate Download Action */}
-          <div className="p-6 rounded-2xl bg-slate-950 border border-slate-800/80 space-y-6 shadow-inner">
-            <div className="flex flex-col sm:flex-row items-center gap-5">
+          <div className="p-5 sm:p-6 rounded-2xl bg-slate-950 border border-slate-800 space-y-5 shadow-inner">
+            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5">
               <img
                 src={order.productCover}
                 alt={order.productTitle}
                 className="w-20 h-28 object-cover rounded-lg border border-slate-700 shadow-md shrink-0"
               />
-              <div className="space-y-1.5 flex-1">
-                <span className="text-[10px] font-bold text-amber-400 uppercase tracking-widest bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
-                  Purchased Digital Ebook (PDF)
-                </span>
+              <div className="space-y-2 flex-1 text-center sm:text-left">
+                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                  <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider bg-amber-500/10 px-2.5 py-0.5 rounded border border-amber-500/20">
+                    Purchased Ebook (PDF)
+                  </span>
+                  <span className="text-[10px] font-semibold text-slate-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
+                    {order.productEdition}
+                  </span>
+                </div>
+
                 <h3 className="text-base sm:text-lg font-bold text-white leading-snug">
                   {order.productTitle}
                 </h3>
-                <div className="flex flex-wrap items-center gap-2 pt-1 text-xs text-slate-400 font-medium">
-                  <span className="bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
-                    ✓ {order.productEdition}
+
+                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 text-xs text-slate-400 font-medium pt-0.5">
+                  <span className="flex items-center gap-1 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
+                    <Globe className="w-3 h-3 text-blue-400" /> {order.productLanguage}
                   </span>
-                  <span className="bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
-                    ✓ {order.productLanguage}
+                  <span className="flex items-center gap-1 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
+                    <FileText className="w-3 h-3 text-emerald-400" /> {order.productPageCount}
                   </span>
-                  <span className="bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
-                    ✓ {order.productPageCount}
+                  <span className="flex items-center gap-1 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
+                    <CreditCard className="w-3 h-3 text-amber-400" /> Paid: ₹{amountInRs}
                   </span>
                 </div>
               </div>
             </div>
 
             {/* Primary Download Button */}
-            <div className="pt-4 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="pt-3 border-t border-slate-800/80 flex flex-col sm:flex-row items-center justify-between gap-4">
               <a
                 href={downloadUrl}
                 download
-                className="w-full sm:w-auto flex-1 inline-flex items-center justify-center gap-3 px-8 py-4 rounded-xl text-base font-extrabold bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-xl shadow-amber-500/25 transition-all transform active:scale-95"
+                className="w-full sm:w-auto flex-1 inline-flex items-center justify-center gap-2.5 px-8 py-4 rounded-xl text-sm sm:text-base font-extrabold bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 hover:from-amber-400 hover:to-amber-300 text-slate-950 shadow-xl shadow-amber-500/25 transition-all transform active:scale-95 text-center"
               >
                 <Download className="w-5 h-5" />
                 <span>DOWNLOAD EBOOK (PDF)</span>
@@ -108,7 +130,7 @@ export default function OrderSuccessClient({ order, rawToken }: OrderSuccessClie
 
               <div className="text-xs text-slate-400 flex items-center gap-1.5 shrink-0">
                 <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                <span>Authorized Secure Stream</span>
+                <span>Verified Direct Stream</span>
               </div>
             </div>
           </div>
@@ -117,14 +139,62 @@ export default function OrderSuccessClient({ order, rawToken }: OrderSuccessClie
           <div className="p-4 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-xs flex items-start gap-3.5 text-left">
             <Mail className="w-5 h-5 text-blue-400 shrink-0 mt-0.5" />
             <div className="space-y-1">
-              <p className="font-bold text-blue-200">Email Access Link Dispatched</p>
+              <p className="font-bold text-blue-200">Email Confirmation & Lifetime Access Link</p>
               <p className="text-slate-300 leading-relaxed">
-                We’ve sent your secure access link, order receipt, and transaction summary to <strong className="text-white">{order.customerEmail}</strong>.
+                We have delivered your receipt and secure access token to <strong className="text-white">{order.customerEmail}</strong>. You can re-download anytime from your email.
               </p>
             </div>
           </div>
 
-          {/* WhatsApp Instant Support & Telegram Connect */}
+          {/* Detailed Purchaser & Transaction Receipt */}
+          <div className="p-5 rounded-2xl bg-slate-950/80 border border-slate-800 text-xs space-y-3">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+              <h4 className="font-bold text-slate-300 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                <FileText className="w-3.5 h-3.5 text-amber-400" />
+                <span>Official Purchase Receipt</span>
+              </h4>
+              <button
+                onClick={copyOrderRef}
+                className="inline-flex items-center gap-1 text-[11px] text-amber-400 hover:text-amber-300 font-semibold transition-colors"
+              >
+                {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                <span>{copied ? 'Copied Ref' : 'Copy Order Ref'}</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-slate-400 pt-1">
+              <div>
+                <span className="block text-slate-500 text-[10.5px]">Purchaser Name</span>
+                <span className="text-white font-bold text-sm flex items-center gap-1.5 mt-0.5">
+                  <User className="w-3.5 h-3.5 text-amber-400" />
+                  {order.customerName}
+                </span>
+              </div>
+
+              <div>
+                <span className="block text-slate-500 text-[10.5px]">Registered Email</span>
+                <span className="text-white font-medium text-xs mt-0.5 block line-clamp-1">
+                  {order.customerEmail}
+                </span>
+              </div>
+
+              <div>
+                <span className="block text-slate-500 text-[10.5px]">Public Order Reference</span>
+                <span className="font-mono text-white font-bold text-xs mt-0.5 block">
+                  {order.orderRef}
+                </span>
+              </div>
+
+              <div>
+                <span className="block text-slate-500 text-[10.5px]">Total Amount Paid</span>
+                <span className="text-amber-400 font-black text-sm mt-0.5 block">
+                  ₹{amountInRs} (Paid via Razorpay)
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* WhatsApp Support & Telegram Connect */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             {/* WhatsApp Support Card */}
             <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-xs flex flex-col justify-between gap-3 text-left">
@@ -135,15 +205,15 @@ export default function OrderSuccessClient({ order, rawToken }: OrderSuccessClie
                   </svg>
                 </div>
                 <div>
-                  <p className="font-bold text-white">Need Help on WhatsApp?</p>
+                  <p className="font-bold text-white">WhatsApp Support</p>
                   <p className="text-slate-400 text-[11px]">+91 99778 96709</p>
                 </div>
               </div>
               <a
-                href="https://wa.me/919977896709?text=Hi%20GoPustak,%20I%20need%20help%20with%20my%20order."
+                href={`https://wa.me/919977896709?text=${whatsappMessage}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-full py-2 rounded-lg font-bold bg-[#25D366] hover:bg-[#20bd5a] text-slate-950 text-xs text-center transition-colors shadow-sm"
+                className="w-full py-2.5 rounded-xl font-bold bg-[#25D366] hover:bg-[#20bd5a] text-slate-950 text-xs text-center transition-colors shadow-sm"
               >
                 Chat on WhatsApp
               </a>
@@ -158,7 +228,7 @@ export default function OrderSuccessClient({ order, rawToken }: OrderSuccessClie
                   </svg>
                 </div>
                 <div>
-                  <p className="font-bold text-white">Telegram Community</p>
+                  <p className="font-bold text-white">Telegram Channel</p>
                   <p className="text-slate-400 text-[11px]">@Gopustak_official</p>
                 </div>
               </div>
@@ -166,47 +236,18 @@ export default function OrderSuccessClient({ order, rawToken }: OrderSuccessClie
                 href="https://t.me/Gopustak_official"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-full py-2 rounded-lg font-bold bg-sky-600 hover:bg-sky-500 text-white text-xs text-center transition-colors shadow-sm"
+                className="w-full py-2.5 rounded-xl font-bold bg-sky-600 hover:bg-sky-500 text-white text-xs text-center transition-colors shadow-sm"
               >
-                Join Telegram
+                Join @Gopustak_official
               </a>
             </div>
           </div>
 
-          {/* Receipt Details Table */}
-          <div className="pt-4 border-t border-slate-800/80 text-xs space-y-3">
-            <h4 className="font-bold text-slate-300 uppercase tracking-wider text-[11px]">
-              Order Transaction Summary
-            </h4>
-            <div className="space-y-2 text-slate-400">
-              <div className="flex justify-between py-1 border-b border-slate-800/50">
-                <span>Public Order Reference:</span>
-                <span className="font-mono text-white font-bold">{order.orderRef}</span>
-              </div>
-              <div className="flex justify-between py-1 border-b border-slate-800/50">
-                <span>Customer Name:</span>
-                <span className="text-white font-medium">{order.customerName}</span>
-              </div>
-              <div className="flex justify-between py-1 border-b border-slate-800/50">
-                <span>Delivery Format:</span>
-                <span className="text-white font-medium">Digital PDF (Immediate Download)</span>
-              </div>
-              <div className="flex justify-between py-1 border-b border-slate-800/50">
-                <span>Payment Status:</span>
-                <span className="text-emerald-400 font-bold">PAID & VERIFIED</span>
-              </div>
-              <div className="flex justify-between py-1">
-                <span>Total Amount Paid:</span>
-                <span className="text-amber-400 font-extrabold text-sm">₹{amountInRs}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Navigation Home */}
+          {/* Return to Storefront */}
           <div className="pt-2 text-center">
             <Link
               href="/"
-              className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-amber-400 transition-colors"
+              className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-amber-400 transition-colors font-medium"
             >
               ← Return to GoPustak Storefront
             </Link>
