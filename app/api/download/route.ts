@@ -126,6 +126,8 @@ export async function GET(req: Request) {
     const candidatePaths = [
       path.join(process.cwd(), 'server_storage', 'ebooks', pdfFileName),
       path.resolve('./server_storage/ebooks', pdfFileName),
+      path.join('/tmp', 'server_storage', 'ebooks', pdfFileName),
+      path.join('/tmp', pdfFileName),
     ];
 
     let filePath = '';
@@ -136,9 +138,21 @@ export async function GET(req: Request) {
       }
     }
 
+    // Fuzzy matching if filename casing differed slightly
+    if (!filePath) {
+      const ebookDir = path.join(process.cwd(), 'server_storage', 'ebooks');
+      if (fs.existsSync(ebookDir)) {
+        const allFiles = fs.readdirSync(ebookDir);
+        const match = allFiles.find((f) => f.toLowerCase() === pdfFileName.toLowerCase() || f.includes(pdfFileName) || pdfFileName.includes(f));
+        if (match) {
+          filePath = path.join(ebookDir, match);
+        }
+      }
+    }
+
     if (!filePath) {
       return NextResponse.json(
-        { success: false, error: 'Ebook file not found in secure server storage.' },
+        { success: false, error: `Ebook file (${pdfFileName}) not found in secure server storage.` },
         { status: 404 }
       );
     }

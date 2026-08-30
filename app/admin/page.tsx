@@ -9,7 +9,6 @@ import {
   Eye,
   EyeOff,
   ShoppingBag,
-  Clock,
   CheckCircle,
   AlertCircle,
   FileText,
@@ -21,6 +20,7 @@ import {
   FileUp,
   Image as ImageIcon,
   X,
+  Check,
 } from 'lucide-react';
 
 interface AdminProduct {
@@ -66,6 +66,8 @@ export default function AdminPage() {
 
   const [products, setProducts] = useState<AdminProduct[]>([]);
   const [orders, setOrders] = useState<AdminOrder[]>([]);
+  const [availablePdfs, setAvailablePdfs] = useState<string[]>([]);
+  const [availableCovers, setAvailableCovers] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<string>('');
@@ -204,11 +206,21 @@ export default function AdminPage() {
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch('/api/admin/products');
-      const data = await res.json();
-      if (data.success) {
-        setProducts(data.products || []);
-        setOrders(data.orders || []);
+      const [prodRes, uploadRes] = await Promise.all([
+        fetch('/api/admin/products'),
+        fetch('/api/admin/upload'),
+      ]);
+
+      const prodData = await prodRes.json();
+      if (prodData.success) {
+        setProducts(prodData.products || []);
+        setOrders(prodData.orders || []);
+      }
+
+      const uploadData = await uploadRes.json();
+      if (uploadData.success) {
+        setAvailablePdfs(uploadData.availablePdfs || []);
+        setAvailableCovers(uploadData.availableCovers || []);
       }
     } catch (err) {
       console.error('Failed to load admin data:', err);
@@ -236,7 +248,7 @@ export default function AdminPage() {
 
       const data = await res.json();
       if (data.success) {
-        setUploadFeedback(`✓ ${file.name} uploaded successfully!`);
+        setUploadFeedback(`✓ ${file.name} uploaded successfully! Attached to form.`);
         if (type === 'cover') {
           if (isEditing) {
             setEditFormData((prev) => ({ ...prev, coverImage: data.url }));
@@ -250,6 +262,7 @@ export default function AdminPage() {
             setNewProductData((prev) => ({ ...prev, pdfFileName: data.filename }));
           }
         }
+        await loadData();
       } else {
         setUploadFeedback(`Upload error: ${data.error}`);
       }
@@ -311,7 +324,7 @@ export default function AdminPage() {
 
       const data = await res.json();
       if (data.success) {
-        setSaveStatus(`✓ Saved successfully! Price updated to ₹${editFormData.priceInRs} (MRP: ₹${editFormData.mrpInRs})`);
+        setSaveStatus(`✓ Saved successfully! PDF file updated to "${editFormData.pdfFileName}"`);
         setEditProductId(null);
         await loadData();
       } else {
@@ -688,18 +701,15 @@ export default function AdminPage() {
                     {/* Local File Upload Section for Edit Mode */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-800">
                       {/* Cover Upload */}
-                      <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 space-y-2">
+                      <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 space-y-2.5">
                         <div className="flex items-center justify-between">
                           <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
                             <ImageIcon className="w-3.5 h-3.5 text-amber-400" />
                             <span>Book Cover Image</span>
                           </label>
-                          <span className="text-[10px] text-slate-500 font-mono line-clamp-1 max-w-[140px]">
-                            {editFormData.coverImage}
-                          </span>
                         </div>
 
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-start gap-3">
                           {editFormData.coverImage && (
                             <img
                               src={editFormData.coverImage}
@@ -707,7 +717,7 @@ export default function AdminPage() {
                               className="w-12 h-16 object-cover rounded border border-slate-700 shrink-0"
                             />
                           )}
-                          <div className="flex-1 space-y-1.5">
+                          <div className="flex-1 space-y-2">
                             <input
                               type="file"
                               ref={editCoverInputRef}
@@ -727,6 +737,21 @@ export default function AdminPage() {
                               <UploadCloud className="w-3.5 h-3.5 text-amber-400" />
                               <span>{isUploadingCover ? 'Uploading Cover...' : 'Upload New Cover from PC'}</span>
                             </button>
+
+                            {availableCovers.length > 0 && (
+                              <select
+                                value={editFormData.coverImage}
+                                onChange={(e) => setEditFormData({ ...editFormData, coverImage: e.target.value })}
+                                className="w-full p-2 text-[11px] rounded-lg border border-slate-700 bg-slate-950 text-slate-300 font-mono"
+                              >
+                                {availableCovers.map((c) => (
+                                  <option key={c} value={c}>
+                                    Select Server Cover: {c}
+                                  </option>
+                                ))}
+                              </select>
+                            )}
+
                             <input
                               type="text"
                               value={editFormData.coverImage}
@@ -739,18 +764,15 @@ export default function AdminPage() {
                       </div>
 
                       {/* PDF Upload */}
-                      <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 space-y-2">
+                      <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 space-y-2.5">
                         <div className="flex items-center justify-between">
                           <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
                             <FileUp className="w-3.5 h-3.5 text-sky-400" />
-                            <span>Private PDF Ebook</span>
+                            <span>Attached PDF Ebook</span>
                           </label>
-                          <span className="text-[10px] text-slate-500 font-mono line-clamp-1 max-w-[140px]">
-                            {editFormData.pdfFileName}
-                          </span>
                         </div>
 
-                        <div className="space-y-1.5">
+                        <div className="space-y-2">
                           <input
                             type="file"
                             ref={editPdfInputRef}
@@ -770,6 +792,23 @@ export default function AdminPage() {
                             <FileUp className="w-3.5 h-3.5 text-sky-400" />
                             <span>{isUploadingPdf ? 'Uploading PDF...' : 'Upload New PDF Ebook from PC'}</span>
                           </button>
+
+                          {/* Server Storage PDF Dropdown */}
+                          {availablePdfs.length > 0 && (
+                            <select
+                              value={editFormData.pdfFileName}
+                              onChange={(e) => setEditFormData({ ...editFormData, pdfFileName: e.target.value })}
+                              className="w-full p-2 text-[11px] rounded-lg border border-slate-700 bg-slate-950 text-sky-300 font-mono"
+                            >
+                              <option value="">-- Choose from server_storage/ebooks --</option>
+                              {availablePdfs.map((pdf) => (
+                                <option key={pdf} value={pdf}>
+                                  Server PDF: {pdf}
+                                </option>
+                              ))}
+                            </select>
+                          )}
+
                           <input
                             type="text"
                             value={editFormData.pdfFileName}
@@ -813,17 +852,21 @@ export default function AdminPage() {
                           {product.subtitle}
                         </p>
                       )}
-                      <div className="flex items-center gap-3 text-[11px] text-slate-500 font-mono pt-1">
-                        <span>PDF: <strong className="text-slate-400">{product.pdfFileName}</strong></span>
+                      <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-400 font-mono pt-1">
+                        <span className="bg-slate-900 px-2 py-0.5 rounded border border-slate-800 text-sky-300">
+                          PDF: {product.pdfFileName}
+                        </span>
                         <span>•</span>
-                        <span>Slug: <strong className="text-slate-400">/{product.slug}</strong></span>
+                        <span>Slug: /{product.slug}</span>
                       </div>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-4 shrink-0 w-full md:w-auto justify-between md:justify-end border-t md:border-t-0 border-slate-800 pt-3 md:pt-0">
                     <div className="text-right">
-                      <div className="text-xl font-black text-amber-400">₹{priceInRs}</div>
+                      <div className="text-xl font-black text-amber-400">
+                        {priceInRs === 0 ? 'FREE' : `₹${priceInRs}`}
+                      </div>
                       <div className="text-xs text-slate-500 line-through">MRP: ₹{mrpInRs}</div>
                     </div>
 
@@ -976,7 +1019,7 @@ export default function AdminPage() {
                     type="number"
                     required
                     value={newProductData.priceInRs}
-                    onChange={(e) => setNewProductData({ ...newProductData, priceInRs: Number(e.target.value) })}
+                    onChange={(e) => setNewProductData({ ...newProductData, priceInRs: e.target.value })}
                     className="w-full p-2.5 text-xs rounded-xl border border-slate-700 bg-slate-950 text-white font-bold text-amber-400 focus:ring-2 focus:ring-amber-500 focus:outline-none"
                   />
                 </div>
@@ -988,7 +1031,7 @@ export default function AdminPage() {
                     type="number"
                     required
                     value={newProductData.mrpInRs}
-                    onChange={(e) => setNewProductData({ ...newProductData, mrpInRs: Number(e.target.value) })}
+                    onChange={(e) => setNewProductData({ ...newProductData, mrpInRs: e.target.value })}
                     className="w-full p-2.5 text-xs rounded-xl border border-slate-700 bg-slate-950 text-white focus:ring-2 focus:ring-amber-500 focus:outline-none"
                   />
                 </div>
@@ -1047,7 +1090,7 @@ export default function AdminPage() {
               {/* Local File Upload Section for Add Ebook Modal */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-800">
                 {/* Cover Image Upload from Computer */}
-                <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
+                <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-2.5">
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
                       <ImageIcon className="w-3.5 h-3.5 text-amber-400" />
@@ -1055,7 +1098,7 @@ export default function AdminPage() {
                     </label>
                   </div>
 
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-start gap-3">
                     {newProductData.coverImage && (
                       <img
                         src={newProductData.coverImage}
@@ -1063,7 +1106,7 @@ export default function AdminPage() {
                         className="w-12 h-16 object-cover rounded border border-slate-700 shrink-0"
                       />
                     )}
-                    <div className="flex-1 space-y-1.5">
+                    <div className="flex-1 space-y-2">
                       <input
                         type="file"
                         ref={addCoverInputRef}
@@ -1083,6 +1126,21 @@ export default function AdminPage() {
                         <UploadCloud className="w-3.5 h-3.5 text-amber-400" />
                         <span>{isUploadingCover ? 'Uploading Cover...' : 'Choose Image from PC'}</span>
                       </button>
+
+                      {availableCovers.length > 0 && (
+                        <select
+                          value={newProductData.coverImage}
+                          onChange={(e) => setNewProductData({ ...newProductData, coverImage: e.target.value })}
+                          className="w-full p-2 text-[11px] rounded-lg border border-slate-700 bg-slate-900 text-slate-300 font-mono"
+                        >
+                          {availableCovers.map((c) => (
+                            <option key={c} value={c}>
+                              Select Server Cover: {c}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+
                       <input
                         type="text"
                         value={newProductData.coverImage}
@@ -1095,7 +1153,7 @@ export default function AdminPage() {
                 </div>
 
                 {/* PDF Ebook Upload from Computer */}
-                <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
+                <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-2.5">
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
                       <FileUp className="w-3.5 h-3.5 text-sky-400" />
@@ -1103,7 +1161,7 @@ export default function AdminPage() {
                     </label>
                   </div>
 
-                  <div className="space-y-1.5">
+                  <div className="space-y-2">
                     <input
                       type="file"
                       ref={addPdfInputRef}
@@ -1123,6 +1181,22 @@ export default function AdminPage() {
                       <FileUp className="w-3.5 h-3.5 text-sky-400" />
                       <span>{isUploadingPdf ? 'Uploading PDF...' : 'Choose PDF from PC'}</span>
                     </button>
+
+                    {availablePdfs.length > 0 && (
+                      <select
+                        value={newProductData.pdfFileName}
+                        onChange={(e) => setNewProductData({ ...newProductData, pdfFileName: e.target.value })}
+                        className="w-full p-2 text-[11px] rounded-lg border border-slate-700 bg-slate-900 text-sky-300 font-mono"
+                      >
+                        <option value="">-- Choose from server_storage/ebooks --</option>
+                        {availablePdfs.map((pdf) => (
+                          <option key={pdf} value={pdf}>
+                            Server PDF: {pdf}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+
                     <input
                       type="text"
                       value={newProductData.pdfFileName}
